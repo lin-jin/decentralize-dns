@@ -1,1 +1,1 @@
-# decentralize_dns
+# decentralize-dns

@@ -9,7 +9,7 @@ contract DomainToken is Token {
     uint8 constant public decimals = 0;
     
     address contractOwner;
-    uint public totalDomainToken;
+    uint256 public totalDomainToken;
     
     mapping (address => uint256) balances;
     mapping (address => mapping (address => uint256)) approved;
@@ -59,4 +59,21 @@ contract DomainToken is Token {
     
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
     
+    
+    
+    
+    //supply tokens for experiment
+    function supplyDomainTokens (uint256 tokens) public returns (uint256) {
+        balances[msg.sender] += tokens;
+        totalDomainToken += tokens;
+        return balanceOf(msg.sender);
+    }
+    
+    //deduct tokens for experiment
+    function deductDomainTokens (uint256 tokens) public returns (uint256) {
+        require (balanceOf(msg.sender) >= tokens);
+        balances[msg.sender] -= tokens;
+        totalDomainToken -= tokens;
+        return balanceOf(msg.sender);
+    }
 }

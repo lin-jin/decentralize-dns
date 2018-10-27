@@ -3,7 +3,7 @@ pragma solidity ^0.4.25;
 contract DecentralizedDNS {
     
     address contractOwner;
-    //uint64 public numberOfDomains;
+    uint64 public numberOfDomains;
     uint64 public constant updatePrice = 1 ether;
     uint64 public constant maxRegTime = 5 minutes;
     uint8 public validThrehold = 4; // verified weighted votes is at least 4 times unverified weighted votes

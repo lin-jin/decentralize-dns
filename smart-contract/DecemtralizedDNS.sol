@@ -4,7 +4,7 @@ import './DomainToken.sol';
 
 contract DecentralizedDNS {
     
-    address constant tokenContractAddr = 0xbbf289d846208c16edc8474705c748aff07732db;
+    address constant tokenContractAddr = 0x692a70d2e424a56d2c6c27aa97d1a86395877b3a;
     DomainToken token = DomainToken(tokenContractAddr);
     
     address contractOwner;
@@ -12,31 +12,33 @@ contract DecentralizedDNS {
     uint8 public validThrehold;
     uint256 public tips;
     
-    enum Stage {Init, Reg, Vote, Done}
+    enum Stage {Init, Vote, Done}
+    enum Votes {None, Valid, Invalid}
+    
     
     struct CommitteeMember {
-        bool isMember;
-        bool voted;
-        bool domainVerified;
-        uint weight;
+        Votes result;
+        uint256 weightedVote;
     }
     
     struct Update {
         address proposer;
         string domain;
         string record;
-        //uint expiration;
         uint256 cost;
-        uint time;
         Stage stage;
+        uint256 weightedVoteForValid;
+        uint256 weightedVoteForInvalid;
+        address[] committeeForValid;
+        address[] committeeForInvalid;
         mapping (address => CommitteeMember) committee;
-        address[] committeeMember;
+        mapping (string => bool) existingNounce;
+        address helper;
     }
     
     struct RecordSet {
         address owner;
         string domain;
-        //uint expiration;
         string record;
     }
     
@@ -46,6 +48,7 @@ contract DecentralizedDNS {
     event NewUpdate (address proposer, string domain, bool needVote);
     event VoteResult (string domain, bool isValid);
     event RecordDeleted (string domain);
+    event VoteFailure (string domain, bool domainVerified);
     
     
     modifier ownerPrivilege {
@@ -57,7 +60,7 @@ contract DecentralizedDNS {
     constructor () {
         contractOwner = msg.sender;
         numberOfClaimedDomains = 0;
-        validThrehold = 4; // verified weighted votes is at least 4 times unverified weighted votes
+        validThrehold = 1; // verified weighted votes is at least validThrehold times unverified weighted votes
         tips = 0;
     }
     
@@ -66,19 +69,17 @@ contract DecentralizedDNS {
         
         dnsRecordSets[_domainHash].owner = updatesTable[_domainHash].proposer;
         dnsRecordSets[_domainHash].domain = updatesTable[_domainHash].domain;
-        //dnsRecordSets[_domainHash].expiration = updatesTable[_domainHash].expiration;
         dnsRecordSets[_domainHash].record = updatesTable[_domainHash].record;
         
         numberOfClaimedDomains += 1;
-        
     }
     
     
     function deleteRecordSet (string _domain) public returns (bool) {
         
+        bytes32 domainHash = keccak256(_domain);
         require(msg.sender == dnsRecordSets[domainHash].owner);
         
-        bytes32 domainHash = keccak256(_domain);
         delete dnsRecordSets[domainHash].owner;
         delete dnsRecordSets[domainHash].domain;
         delete dnsRecordSets[domainHash].record;
@@ -87,14 +88,20 @@ contract DecentralizedDNS {
         emit RecordDeleted(_domain);
     }
     
+    
     function deleteUpdate (bytes32 _domainHash) private {
         
-        for (uint i = 0; i < updatesTable[_domainHash].committeeMember.length; i++) {
-            delete updatesTable[_domainHash].committee[updatesTable[_domainHash].committeeMember[i]];
+        uint i;
+        for (i = 0; i < updatesTable[_domainHash].committeeForValid.length; i++) {
+            delete updatesTable[_domainHash].committee[updatesTable[_domainHash].committeeForValid[i]];
+        }
+        for (i = 0; i < updatesTable[_domainHash].committeeForInvalid.length; i++) {
+            delete updatesTable[_domainHash].committee[updatesTable[_domainHash].committeeForInvalid[i]];
         }
         delete updatesTable[_domainHash];
         
     }
+    
     
     // msg.sender deposite tokens in the contract to claim the domain ownership
     function deposite (uint256 _cost) private returns (bool) {
@@ -104,20 +111,52 @@ contract DecentralizedDNS {
         return true;
     }
     
+    
     // reward voters according to their voting weight
-    function rewardVoters (bytes32 _domainHash, address [] _voters, uint256 _totalWeightedVotes) private returns (bool) {
+    function rewardVoters (bytes32 _domainHash, bool result) private returns (bool) {
         
-        uint256 rewards = updatesTable[_domainHash].cost;
-        uint256 tip = rewards;
-        for (uint i = 0; i < _voters.length; i++) {
-            uint256 reward = updatesTable[_domainHash].committee[_voters[i]].weight * rewards / _totalWeightedVotes;
-            token.transfer(_voters[i], reward);
-            tip -= rewards;
+        uint256 totalRewards = updatesTable[_domainHash].cost;
+        uint256 tip = totalRewards;
+        
+        uint i;
+        uint256 reward;
+        if (result = true) {
+            for (i = 0; i < updatesTable[_domainHash].committeeForValid.length; i++) {
+                reward = updatesTable[_domainHash].committee[updatesTable[_domainHash].committeeForValid[i]].weightedVote * totalRewards / updatesTable[_domainHash].weightedVoteForValid;
+                token.transfer(updatesTable[_domainHash].committeeForValid[i], reward);
+                tip -= reward;
+            }
+            
+        }
+        else {
+            for (i = 0; i < updatesTable[_domainHash].committeeForInvalid.length; i++) {
+                reward = updatesTable[_domainHash].committee[updatesTable[_domainHash].committeeForInvalid[i]].weightedVote * totalRewards / updatesTable[_domainHash].weightedVoteForInvalid;
+                token.transfer(updatesTable[_domainHash].committeeForInvalid[i], reward);
+                tip -= reward;
+            }
         }
         
         tips += tip;
         
         return true;
+    }
+    
+    
+    // proof of work check
+    function voteValidity (bytes32 _domainHash, string _nounce) private returns (bool) {
+        return true;
+    } 
+    
+    
+    // vote complete check
+    function isVoteComplete (bytes32 _domainHash) private returns (bool) {
+        return false;
+    }
+    
+    
+    // reward helper to change the vote stage
+    function rewardHelper (address _helper) private {
+        
     }
     
     function sendUpdate (string _domain, string _record, uint256 _cost) public {
@@ -129,100 +168,99 @@ contract DecentralizedDNS {
             emit NewUpdate (msg.sender, _domain, false);
         }
         else{
-            require(updatesTable[domainHash].time == 0, "Domain update in progress.");
+            require(updatesTable[domainHash].stage == Stage.Init, "Domain update in progress.");
             require(deposite(_cost) == true);
 
             updatesTable[domainHash].proposer = msg.sender;
             updatesTable[domainHash].domain = _domain;
             updatesTable[domainHash].record = _record;
-            //updatesTable[domainHash].expiration = _expiration
             updatesTable[domainHash].cost = _cost;
-            updatesTable[domainHash].time = now;
-            updatesTable[domainHash].stage = Stage.Reg;
+            updatesTable[domainHash].stage = Stage.Vote;
             
             emit NewUpdate (msg.sender, _domain, true);
         }
     }
     
     
-    function register (string _domain) public returns (bool) {
+    function vote (string _domain, string _nounce, bool _domainVerified) public returns (bool)  {
         
         bytes32 domainHash = keccak256(_domain);
-        
-        require (updatesTable[domainHash].stage == Stage.Reg, "Not in registration stage.");
-        require(updatesTable[domainHash].time != 0, "Domain update has not started.");
-        require(updatesTable[domainHash].committee[msg.sender].isMember == false, "You are already a committee member for this domain update.");
-        //require(now - updatesTable[domainHash].time <= maxRegTime, "Maximum registration time has reached.");
-        
-        updatesTable[domainHash].committeeMember.push(msg.sender);
-        updatesTable[domainHash].committee[msg.sender].isMember = true;
-        
-        return true;
-    }
-    
-    
-    function vote (string _domain, bool _domainVerified) public returns (bool)  {
-        
-        bytes32 domainHash = keccak256(_domain);
+        uint256 weight = token.balanceOf(msg.sender);
         
         require(updatesTable[domainHash].stage == Stage.Vote, "Not in the voting stage.");
-        require(updatesTable[domainHash].committee[msg.sender].isMember, "You are not the committee member for his domain update."); 
-        require(updatesTable[domainHash].committee[msg.sender].voted == false, "You have voted for this domain.");
+        require(updatesTable[domainHash].existingNounce[_nounce] == false, "Nounce already exists.");
+        require(weight > 0, "Voter has no weight.");
+        require(voteValidity(domainHash, _nounce) == true, "Vote is invalid.");
         
-        updatesTable[domainHash].committee[msg.sender].voted = true;
-        updatesTable[domainHash].committee[msg.sender].domainVerified = _domainVerified;
-        updatesTable[domainHash].committee[msg.sender].weight = token.balanceOf(msg.sender);
+        updatesTable[domainHash].existingNounce[_nounce] = true;
         
-        return true;
+        if (isVoteComplete(domainHash) == true) {
+            updatesTable[domainHash].helper = msg.sender;
+            changeVotingStage(_domain, Stage.Done);
+            voteComplete(domainHash);
+            return true;
+        }
+        
+        Votes result;
+        if (_domainVerified == true) {
+            result = Votes.Valid;
+        }
+        else {
+            result = Votes.Invalid;
+        }
+        
+        if (updatesTable[domainHash].committee[msg.sender].result == Votes.None) {
+            updatesTable[domainHash].committee[msg.sender].result = result;
+            updatesTable[domainHash].committee[msg.sender].weightedVote = weight;
+            if (_domainVerified == true) {
+                updatesTable[domainHash].committeeForValid.push(msg.sender);
+                updatesTable[domainHash].weightedVoteForValid += weight;
+            }
+            else {
+                updatesTable[domainHash].committeeForInvalid.push(msg.sender);
+                updatesTable[domainHash].weightedVoteForInvalid += weight;
+            }
+            return true;
+        }
+        else {
+            emit VoteFailure (_domain, _domainVerified);
+            return false;
+        }
     }
     
     
     function voteComplete (bytes32 _domainHash) private returns (bool) {
         
         bool result;
-        uint totalWeightedVerifiedVotes = 0;
-        uint totalWeightedUnverifiedVotes = 0;
-        
-        address[] verifiedVoters;
-        address[] unverifiedVoters;
-        
-        for (uint i = 0; i < updatesTable[_domainHash].committeeMember.length; i++) {
-            if (updatesTable[_domainHash].committee[updatesTable[_domainHash].committeeMember[i]].isMember == true) {
-                if (updatesTable[_domainHash].committee[updatesTable[_domainHash].committeeMember[i]].voted == true) {
-                    if (updatesTable[_domainHash].committee[updatesTable[_domainHash].committeeMember[i]].domainVerified == true) {
-                    totalWeightedVerifiedVotes += updatesTable[_domainHash].committee[updatesTable[_domainHash].committeeMember[i]].weight;
-                    verifiedVoters.push(updatesTable[_domainHash].committeeMember[i]);
-                    }
-                    else {
-                        totalWeightedUnverifiedVotes += updatesTable[_domainHash].committee[updatesTable[_domainHash].committeeMember[i]].weight;
-                        unverifiedVoters.push(updatesTable[_domainHash].committeeMember[i]);
-                    }
-                }
-            }
-        }
-        
-        if (totalWeightedVerifiedVotes / validThrehold >= totalWeightedUnverifiedVotes) {
+
+        if (updatesTable[_domainHash].weightedVoteForValid / validThrehold >= updatesTable[_domainHash].weightedVoteForInvalid ) {
             result = true;
             addRecordSet(_domainHash);
-            rewardVoters(_domainHash, verifiedVoters, totalWeightedVerifiedVotes);
         }
         else {
             result = false;
-            rewardVoters(_domainHash, unverifiedVoters, totalWeightedUnverifiedVotes);
         }
         
-        deleteUpdate(_domainHash);
-        
+        rewardVoters(_domainHash, result);
         emit VoteResult(updatesTable[_domainHash].domain, result);
+        
+        deleteUpdate(_domainHash);
     }
     
     
-    
-    function getUpdate (string _domain) public view returns (address, string, string, uint, Stage, address[]) {
+    function getUpdate (string _domain) public view returns (address, string, string, Stage, address[], uint256, address[], uint256) {
         
         bytes32 domainHash = keccak256(_domain);
         
-        return (updatesTable[domainHash].proposer, updatesTable[domainHash].domain, updatesTable[domainHash].record, updatesTable[domainHash].time, updatesTable[domainHash].stage, updatesTable[domainHash].committeeMember);
+        return (
+            updatesTable[domainHash].proposer, 
+            updatesTable[domainHash].domain, 
+            updatesTable[domainHash].record, 
+            updatesTable[domainHash].stage, 
+            updatesTable[domainHash].committeeForValid,
+            updatesTable[domainHash].weightedVoteForValid,
+            updatesTable[domainHash].committeeForInvalid,
+            updatesTable[domainHash].weightedVoteForInvalid);
     }
     
     

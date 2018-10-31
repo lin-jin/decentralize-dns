@@ -6,7 +6,7 @@ contract DomainToken is Token {
     
     string constant public name  = "DomainToken";
     string constant public symbol = "DMT";
-    uint8 constant public decimals = 0;
+    uint8 constant public decimals = 18;
     
     address contractOwner;
     uint256 public totalDomainToken;

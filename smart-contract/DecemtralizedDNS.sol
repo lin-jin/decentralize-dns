@@ -10,6 +10,7 @@ contract DecentralizedDNS {
     address contractOwner;
     uint64 public numberOfClaimedDomains;
     uint8 public validThrehold;
+    uint256 public weightThrehold;
     uint256 public tips;
     
     enum Stage {Init, Vote, Done}
@@ -38,6 +39,7 @@ contract DecentralizedDNS {
     
     struct RecordSet {
         address owner;
+        address delegatedOwner;
         string domain;
         string record;
     }
@@ -46,27 +48,20 @@ contract DecentralizedDNS {
     mapping (bytes32 => Voting) updatesTable;
     mapping (bytes32 => RecordSet) dnsRecordSets;
     
-    event NewUpdate (address proposer, string domain, bool needVote);
+    event NewUpdate (address proposer, string domain, string record);
     event NewOwnershipClaim (address proposer, string domain);
     event OwnershipTransfer (string domain, address nextOwner);
     event VoteResult (string domain, bool isValid);
     event RecordDeleted (string domain);
-    event VoteForOwnerSuccess (string domain, string nounce, bool isValid, uint256 weight);
-    event VoteForOwnerFailure (string domain, string nounce, bool isValid);
-    event VoteForUpdateSuccess (string domain, string nounce, bool isValid, uint256 weight);
-    event VoteForUpdateFailure (string domain, string nounce, bool isValid);
-    
-    
-    modifier ownerPrivilege {
-        require (msg.sender == contractOwner);
-        _;
-    }
+    event VoteSuccess (string domain, string nounce, bool isValid, uint256 weight);
+    event VoteFailure (string domain, string nounce, bool isValid);
     
     
     constructor () {
         contractOwner = msg.sender;
         numberOfClaimedDomains = 0;
-        validThrehold = 1; // verified weighted votes is at least validThrehold times unverified weighted votes
+        validThrehold = 1; // weightForValid is at least validThrehold times weightForInvalid
+        weightThrehold = 100000;
         tips = 0;
     }
     
@@ -138,8 +133,12 @@ contract DecentralizedDNS {
     
     
     // reward voters for ownership claim according to their voting weight
+    // ******IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT******
+    // If there are large number of voters participating in a single voting process, the execution of this function may exceeds the gas limit. This function is called by the helper
+    // ******IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT******
     function rewardVotersForOwnership (bytes32 _domainHash, bool result) private returns (bool) {
         
+        // reward something to helpers
         uint256 totalRewards = ownershipClaimTable[_domainHash].cost;
         uint256 tip = totalRewards;
         
@@ -168,6 +167,9 @@ contract DecentralizedDNS {
     
     
     // reward voters for update according to their voting weight
+    // ******IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT******
+    // If there are large number of voters participating in a single voting process, the execution of this function may exceeds the gas limit. This function is called by the helper
+    // ******IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT************IMPORTANT******
     function rewardVotersForUpdate (bytes32 _domainHash, bool result) private returns (bool) {
         //
     }
@@ -177,22 +179,6 @@ contract DecentralizedDNS {
     function voteValidity (bytes32 _domainHash, string _nounce) private returns (bool) {
         return true;
     } 
-    
-    
-    // vote complete check
-    function isVoteForOwnershipComplete (bytes32 _domainHash) private returns (bool) {
-        return false;
-    }
-    
-    function isVoteForUpdateComplete (bytes32 _domainHash) private returns (bool) {
-        return false;
-    }
-    
-    
-    // reward helper to change the vote stage
-    function rewardHelper (address _helper) private {
-        
-    }
     
     
     function ownershipTransfer (string _domain, address _nextOwner) public returns (bool) {
@@ -208,12 +194,13 @@ contract DecentralizedDNS {
     }
     
     
-    function claimOwnership (string _domain, uint256 _cost) public returns (bool) {
+    function claimOwnership (string _domain, uint256 _cost) public {
         
         bytes32 domainHash = keccak256(_domain);
         
         require (ownershipClaimTable[domainHash].stage == Stage.Init, "Ownership claim is in progress.");
         require(deposite(_cost) == true);
+        
         
         ownershipClaimTable[domainHash].proposer = msg.sender;
         ownershipClaimTable[domainHash].domain = _domain;
@@ -225,7 +212,7 @@ contract DecentralizedDNS {
     }
     
     
-    function voteForOwnership (string _domain, string _nounce, bool _isValid) public returns (bool) {
+    function voteForOwnership (string _domain, string _nounce, bool _isValid) public {
         
         bytes32 domainHash = keccak256(_domain);
         uint256 weight = token.balanceOf(msg.sender);
@@ -237,13 +224,6 @@ contract DecentralizedDNS {
         
         ownershipClaimTable[domainHash].existingNounce[_nounce] = true;
         
-        if (isVoteForOwnershipComplete(domainHash) == true) {
-            ownershipClaimTable[domainHash].helper = msg.sender;
-            changeVotingStageForOwnership(_domain, Stage.Done);
-            voteCompleteForOwnership(domainHash);
-            return true;
-        }
-        
         Votes result;
         if (_isValid == true) {
             result = Votes.Valid;
@@ -252,6 +232,7 @@ contract DecentralizedDNS {
             result = Votes.Invalid;
         }
         
+        // every address can only vote once, such restrict need to be deleted later.
         if (ownershipClaimTable[domainHash].committee[msg.sender].result == Votes.None) {
             ownershipClaimTable[domainHash].committee[msg.sender].result = result;
             ownershipClaimTable[domainHash].committee[msg.sender].weight = weight;
@@ -263,18 +244,21 @@ contract DecentralizedDNS {
                 ownershipClaimTable[domainHash].committeeForInvalid.push(msg.sender);
                 ownershipClaimTable[domainHash].weightForInvalid += weight;
             }
-            emit VoteForOwnerSuccess (_domain, _nounce, _isValid, weight);
-            return true;
+            emit VoteSuccess (_domain, _nounce, _isValid, weight);
+            
+            if (ownershipClaimTable[domainHash].weightForValid + ownershipClaimTable[domainHash].weightForInvalid >= weightThrehold) {
+                ownershipClaimTable[domainHash].stage = Stage.Done;
+                ownershipClaimTable[domainHash].helper = msg.sender;
+                voteCompleteForOwnership(domainHash);
+            }
         }
-        // every address can only vote once, such restrict need to be deleted later.
         else {
-            emit VoteForOwnerFailure (_domain, _nounce, _isValid);
-            return false;
+            emit VoteFailure (_domain, _nounce, _isValid);
         }
     }
     
     
-    function voteCompleteForOwnership (bytes32 _domainHash) private returns (bool) {
+    function voteCompleteForOwnership (bytes32 _domainHash) private {
         
         bool result;
 
@@ -290,16 +274,16 @@ contract DecentralizedDNS {
         emit VoteResult(ownershipClaimTable[_domainHash].domain, result);
         
         deleteOwnershipClaim(_domainHash);
+        deleteUpdate(_domainHash);
     }
     
     
-    function sendUpdate (string _domain, string _record) public returns (bool) {
+    function sendUpdate (string _domain, string _record) public {
         
         bytes32 domainHash = keccak256(_domain);
         
         if (msg.sender == dnsRecordSets[domainHash].owner) {
             dnsRecordSets[domainHash].record = _record;
-            emit NewUpdate (msg.sender, _domain, false);
         }
         else{
             require(dnsRecordSets[domainHash].owner == 0x0, "Domain already has owner.");
@@ -309,14 +293,13 @@ contract DecentralizedDNS {
             updatesTable[domainHash].record = _record;
             updatesTable[domainHash].stage = Stage.Vote;
             
-            emit NewUpdate (msg.sender, _domain, true);
+            emit NewUpdate (msg.sender, _domain, _record);
         }
         
-        return true;
     }
     
     
-    function voteForUpdate (string _domain, string _nounce, bool _isValid) public returns (bool)  {
+    function voteForUpdate (string _domain, string _nounce, bool _isValid) public {
         
         bytes32 domainHash = keccak256(_domain);
         uint256 weight = token.balanceOf(msg.sender);
@@ -327,13 +310,6 @@ contract DecentralizedDNS {
         require(voteValidity(domainHash, _nounce) == true, "Vote is invalid.");
         
         updatesTable[domainHash].existingNounce[_nounce] = true;
-        
-        if (isVoteForUpdateComplete(domainHash) == true) {
-            updatesTable[domainHash].helper = msg.sender;
-            changeVotingStageForUpdate(_domain, Stage.Done);
-            voteCompleteForUpdate(domainHash);
-            return true;
-        }
         
         Votes result;
         if (_isValid == true) {
@@ -354,17 +330,21 @@ contract DecentralizedDNS {
                 updatesTable[domainHash].committeeForInvalid.push(msg.sender);
                 updatesTable[domainHash].weightForInvalid += weight;
             }
-            emit VoteForUpdateSuccess (_domain, _nounce, _isValid, weight);
-            return true;
+            emit VoteSuccess (_domain, _nounce, _isValid, weight);
+            
+            if (updatesTable[domainHash].weightForValid + updatesTable[domainHash].weightForInvalid >= weightThrehold) {
+                updatesTable[domainHash].stage = Stage.Done;
+                voteCompleteForUpdate(domainHash);
+            }
         }
         else {
-            emit VoteForUpdateFailure (_domain, _nounce, _isValid);
-            return false;
+            emit VoteFailure (_domain, _nounce, _isValid);
         }
+        
     }
     
     
-    function voteCompleteForUpdate (bytes32 _domainHash) private returns (bool) {
+    function voteCompleteForUpdate (bytes32 _domainHash) private {
         
         bool result;
 
@@ -424,7 +404,6 @@ contract DecentralizedDNS {
     }
     
     
-    
     function getVoterForUpdateInfo (string _domain, address _committeeMember) public view returns (Votes, uint256) {
         
         bytes32 domainHash = keccak256(_domain);
@@ -440,32 +419,6 @@ contract DecentralizedDNS {
         bytes32 domainHash = keccak256(_domain);
         
         return (dnsRecordSets[domainHash].owner, dnsRecordSets[domainHash].record);
-    }
-    
-    
-    //for test purpose, need automatic solution
-    function changeVotingStageForUpdate (string _domain, Stage _stage) public ownerPrivilege returns (bool) {
-        
-        bytes32 domainHash = keccak256(_domain);
-        
-        updatesTable[domainHash].stage = _stage;
-        if (_stage == Stage.Done) {
-            voteCompleteForUpdate(domainHash);
-        }
-        
-        return true;
-    }
-    
-    function changeVotingStageForOwnership (string _domain, Stage _stage) public ownerPrivilege returns (bool) {
-        
-        bytes32 domainHash = keccak256(_domain);
-        
-        ownershipClaimTable[domainHash].stage = _stage;
-        if (_stage == Stage.Done) {
-            voteCompleteForOwnership(domainHash);
-        }
-        
-        return true;
     }
     
 }

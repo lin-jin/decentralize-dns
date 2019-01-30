@@ -4,7 +4,11 @@ import './DomainToken.sol';
 
 contract DDNS{
     
+<<<<<<< HEAD
     address constant tokenContractAddr = 0xe394b960F825d4b3B8BBe413BfA2da6771f83077;
+=======
+    address constant tokenContractAddr = 0x15e08fa9FE3e3aa3607AC57A29f92b5D8Cb154A2;
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
     DomainToken token = DomainToken(tokenContractAddr);
     
     enum Stage {Init, Vote, Done}
@@ -12,7 +16,11 @@ contract DDNS{
     enum Strength {None, VL, L, M, H, VH}
     
     
+<<<<<<< HEAD
     event NewRequest (bytes32 hash);
+=======
+    event newRequest (bytes32 hash);
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
     
     struct Record {
         address owner;
@@ -29,12 +37,20 @@ contract DDNS{
         uint256 timestamp;
         Type requestType;
         address sender;
+<<<<<<< HEAD
         bytes domain;
+=======
+        string domain;
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
         uint256 cost;
         uint256 totalStake;
         Stage stage;
         uint256 votingWeight;
+<<<<<<< HEAD
         int256 result;
+=======
+        uint256 result;
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
         bytes15[] candidates;
         mapping (bytes15 => uint256) votes;
         address[] committees;
@@ -48,7 +64,11 @@ contract DDNS{
     mapping(address => uint256) public lastChange;
     
     mapping (bytes32 => Voting) public votingTable;
+<<<<<<< HEAD
     mapping (bytes => Record) dnsTable;
+=======
+    mapping (string => Record) dnsTable;
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
     
     uint256 requestInterval;
     uint256 maxRequestTime;
@@ -101,7 +121,11 @@ contract DDNS{
     }
     
     
+<<<<<<< HEAD
     function request (Type _requestType, bytes memory _domain, uint256 _cost) public {
+=======
+    function request (Type _requestType, string memory _domain, uint256 _cost) public {
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
         bytes32 hash = keccak256(abi.encodePacked(msg.sender, _requestType, _domain, _cost, block.timestamp));
         require(votingTable[hash].timestamp == 0, 'duplicate request');
         
@@ -125,7 +149,11 @@ contract DDNS{
         votingTable[hash].stage = Stage.Vote;
         votingTable[hash].totalStake = totalStake;
         
+<<<<<<< HEAD
         emit NewRequest(hash);
+=======
+        emit newRequest(hash);
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
     }
     
     
@@ -161,11 +189,19 @@ contract DDNS{
         
         if (votingTable[_hash].requestType == Type.Claim) {
             // vote for claim
+<<<<<<< HEAD
             if (_candidates[0] == bytes15('true')) {
                 votingTable[_hash].result += int256(weight) / validThreshold;
             }
             else if (_candidates[0] == bytes15('false')) {
                 votingTable[_hash].result -= int256(weight);
+=======
+            if (_candidates[0] == 'true') {
+                votingTable[_hash].result += weight / validThreshold;
+            }
+            else if (_candidates[0] == 'false') {
+                votingTable[_hash].result -= weight;
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
             }
             else {
                 revert("vote is either not true or false");
@@ -205,7 +241,11 @@ contract DDNS{
     
     function voteComplete (bytes32 _hash) private {
         if (votingTable[_hash].requestType == Type.Claim && votingTable[_hash].result > 0) {
+<<<<<<< HEAD
             bytes memory domain = votingTable[_hash].domain;
+=======
+            string memory domain = votingTable[_hash].domain;
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
             if (dnsTable[domain].owner == address(0x0)) {
                 dnsTable[domain].owner = votingTable[_hash].sender;
                 dnsTable[domain].strength = Strength.VL;
@@ -223,26 +263,42 @@ contract DDNS{
     }
     
     
+<<<<<<< HEAD
     function delegate (bytes memory _domain, address _agent) public {
+=======
+    function delegate (string memory _domain, address _agent) public {
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
         require(msg.sender == dnsTable[_domain].owner, "Only domain owner can delegate ownership.");
         dnsTable[_domain].agent = _agent;
     }
     
     
+<<<<<<< HEAD
     function withdraw (bytes memory _domain) public {
+=======
+    function withdraw (string memory _domain) public {
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
         require(msg.sender == dnsTable[_domain].owner, "Only domain owner can withdraw ownership.");
         delete dnsTable[_domain];
     }
     
     
+<<<<<<< HEAD
     function update (bytes memory _domain, bytes memory _record) public {
+=======
+    function update (string memory _domain, bytes memory _record) public {
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
         require(msg.sender == dnsTable[_domain].owner || msg.sender == dnsTable[_domain].agent, "Only domain owner or agent can update");
         dnsTable[_domain].record = _record;
         dnsTable[_domain].lastUpdate = block.timestamp;
     }
     
     
+<<<<<<< HEAD
     function lookup (bytes memory _domain) view public returns (uint8, bytes memory) {
+=======
+    function lookup (string memory _domain) view public returns (uint8, bytes memory) {
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
         if (dnsTable[_domain].owner != address(0x0)) {
             return (1, dnsTable[_domain].record);
         }
@@ -277,7 +333,11 @@ contract DDNS{
         for (uint j = 0; j <= i; j++) {
             s[j] = reversed[i - j];
         }
+<<<<<<< HEAD
         return s;
+=======
+        return bytes(string(s));
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
     }
     
     
@@ -294,3 +354,8 @@ contract DDNS{
 
 
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047

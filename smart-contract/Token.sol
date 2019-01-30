@@ -1,6 +1,10 @@
-
 pragma solidity >=0.5.0 < 0.6.0;
 
+<<<<<<< HEAD
+pragma solidity >=0.5.0 < 0.6.0;
+
+=======
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047
 interface Token {
     function totalSupply() external view returns (uint256);
     function balanceOf(address _owner) external view returns (uint256 balance);
@@ -10,4 +14,8 @@ interface Token {
     function allowance(address _owner, address _spender) external view returns (uint256 remaining);
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> b1eae7dd3340514e477b716d2bc9100a2a2eb047

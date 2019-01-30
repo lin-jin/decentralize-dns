@@ -4,66 +4,52 @@
 		"inputs": [
 			{
 				"name": "_domain",
-				"type": "string"
-			},
-			{
-				"name": "_stage",
-				"type": "uint8"
+				"type": "bytes"
 			}
 		],
-		"name": "changeVotingStageForOwnership",
+		"name": "withdraw",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "stakes",
 		"outputs": [
 			{
 				"name": "",
-				"type": "bool"
+				"type": "uint256"
 			}
 		],
 		"payable": false,
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
 		"constant": false,
 		"inputs": [
 			{
-				"name": "_domain",
-				"type": "string"
+				"name": "_requestType",
+				"type": "uint8"
 			},
 			{
-				"name": "_stage",
-				"type": "uint8"
-			}
-		],
-		"name": "changeVotingStageForUpdate",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
 				"name": "_domain",
-				"type": "string"
+				"type": "bytes"
 			},
 			{
 				"name": "_cost",
 				"type": "uint256"
 			}
 		],
-		"name": "claimOwnership",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
+		"name": "request",
+		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -73,62 +59,48 @@
 		"inputs": [
 			{
 				"name": "_domain",
-				"type": "string"
-			}
-		],
-		"name": "deleteRecordSet",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_domain",
-				"type": "string"
-			},
-			{
-				"name": "_nextOwner",
-				"type": "address"
-			}
-		],
-		"name": "ownershipTransfer",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_domain",
-				"type": "string"
+				"type": "bytes"
 			},
 			{
 				"name": "_record",
-				"type": "string"
+				"type": "bytes"
 			}
 		],
-		"name": "sendUpdate",
+		"name": "update",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "lastChange",
 		"outputs": [
 			{
 				"name": "",
-				"type": "bool"
+				"type": "uint256"
 			}
 		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_stake",
+				"type": "uint256"
+			}
+		],
+		"name": "sendStakes",
+		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -137,25 +109,137 @@
 		"constant": false,
 		"inputs": [
 			{
-				"name": "_domain",
-				"type": "string"
-			},
-			{
-				"name": "_nounce",
-				"type": "string"
-			},
-			{
-				"name": "_isValid",
-				"type": "bool"
+				"name": "_voting",
+				"type": "bytes32[]"
 			}
 		],
-		"name": "voteForOwnership",
+		"name": "redeem",
 		"outputs": [
 			{
 				"name": "",
-				"type": "bool"
+				"type": "uint256"
 			}
 		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"name": "votingTable",
+		"outputs": [
+			{
+				"name": "timestamp",
+				"type": "uint256"
+			},
+			{
+				"name": "requestType",
+				"type": "uint8"
+			},
+			{
+				"name": "sender",
+				"type": "address"
+			},
+			{
+				"name": "domain",
+				"type": "bytes"
+			},
+			{
+				"name": "cost",
+				"type": "uint256"
+			},
+			{
+				"name": "totalStake",
+				"type": "uint256"
+			},
+			{
+				"name": "stage",
+				"type": "uint8"
+			},
+			{
+				"name": "votingWeight",
+				"type": "uint256"
+			},
+			{
+				"name": "result",
+				"type": "int256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "totalStake",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_domain",
+				"type": "bytes"
+			},
+			{
+				"name": "_agent",
+				"type": "address"
+			}
+		],
+		"name": "delegate",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "_domain",
+				"type": "bytes"
+			}
+		],
+		"name": "lookup",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint8"
+			},
+			{
+				"name": "",
+				"type": "bytes"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_stake",
+				"type": "uint256"
+			}
+		],
+		"name": "retrieveStakes",
+		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -164,25 +248,20 @@
 		"constant": false,
 		"inputs": [
 			{
-				"name": "_domain",
-				"type": "string"
+				"name": "_hash",
+				"type": "bytes32"
 			},
 			{
-				"name": "_nounce",
-				"type": "string"
+				"name": "_keys",
+				"type": "uint256[]"
 			},
 			{
-				"name": "_isValid",
-				"type": "bool"
+				"name": "_candidates",
+				"type": "bytes15[]"
 			}
 		],
-		"name": "voteForUpdate",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
+		"name": "vote",
+		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -198,342 +277,11 @@
 		"inputs": [
 			{
 				"indexed": false,
-				"name": "proposer",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"name": "domain",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"name": "record",
-				"type": "string"
+				"name": "hash",
+				"type": "bytes32"
 			}
 		],
-		"name": "NewUpdate",
+		"name": "NewRequest",
 		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"name": "proposer",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"name": "domain",
-				"type": "string"
-			}
-		],
-		"name": "NewOwnershipClaim",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"name": "domain",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"name": "nextOwner",
-				"type": "address"
-			}
-		],
-		"name": "OwnershipTransfer",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"name": "domain",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"name": "isValid",
-				"type": "bool"
-			}
-		],
-		"name": "VoteResult",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"name": "domain",
-				"type": "string"
-			}
-		],
-		"name": "RecordDeleted",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"name": "domain",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"name": "nounce",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"name": "isValid",
-				"type": "bool"
-			},
-			{
-				"indexed": false,
-				"name": "weight",
-				"type": "uint256"
-			}
-		],
-		"name": "VoteSuccess",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"name": "domain",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"name": "nounce",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"name": "isValid",
-				"type": "bool"
-			}
-		],
-		"name": "VoteFailure",
-		"type": "event"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "_domain",
-				"type": "string"
-			}
-		],
-		"name": "getDNSRecordSet",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			},
-			{
-				"name": "",
-				"type": "string"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "_domain",
-				"type": "string"
-			}
-		],
-		"name": "getOwnershipClaim",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			},
-			{
-				"name": "",
-				"type": "string"
-			},
-			{
-				"name": "",
-				"type": "string"
-			},
-			{
-				"name": "",
-				"type": "uint8"
-			},
-			{
-				"name": "",
-				"type": "address[]"
-			},
-			{
-				"name": "",
-				"type": "uint256"
-			},
-			{
-				"name": "",
-				"type": "address[]"
-			},
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "_domain",
-				"type": "string"
-			}
-		],
-		"name": "getUpdate",
-		"outputs": [
-			{
-				"name": "",
-				"type": "string"
-			},
-			{
-				"name": "",
-				"type": "string"
-			},
-			{
-				"name": "",
-				"type": "uint8"
-			},
-			{
-				"name": "",
-				"type": "address[]"
-			},
-			{
-				"name": "",
-				"type": "uint256"
-			},
-			{
-				"name": "",
-				"type": "address[]"
-			},
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "_domain",
-				"type": "string"
-			},
-			{
-				"name": "_committeeMember",
-				"type": "address"
-			}
-		],
-		"name": "getVoterForOnwershipInfo",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint8"
-			},
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "_domain",
-				"type": "string"
-			},
-			{
-				"name": "_committeeMember",
-				"type": "address"
-			}
-		],
-		"name": "getVoterForUpdateInfo",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint8"
-			},
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "numberOfClaimedDomains",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint64"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "tips",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "validThrehold",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint8"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
 	}
 ]

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity >=0.5.0 < 0.6.0;
 
 import "./Token.sol";
 
@@ -14,7 +14,7 @@ contract DomainToken is Token {
     mapping (address => uint256) balances;
     mapping (address => mapping (address => uint256)) approved;
     
-    constructor () {
+    constructor () public {
         contractOwner = msg.sender;
         totalDomainToken = 0;
     }
@@ -29,7 +29,7 @@ contract DomainToken is Token {
     }
     
     function transfer(address _to, uint256 _value) public returns (bool success) {
-        require (balances[msg.sender] >= _value && _value > 0);
+        require (balances[msg.sender] >= _value, 'balance is not enough');
         balances[msg.sender] -= _value;
         balances[_to] += _value;
         emit Transfer(msg.sender, _to, _value);
@@ -37,7 +37,7 @@ contract DomainToken is Token {
     }
     
     function transferFrom(address _from, address _to, uint256 _value) public returns (bool success) {
-        require (approved[_from][msg.sender] >= _value && balances[_from] >= _value && _value > 0);
+        require (approved[_from][msg.sender] >= _value && balances[_from] >= _value, 'allowance is not enough');
         balances[_from] -= _value;
         balances[_to] += _value;
         approved[_from][msg.sender] -= _value;
@@ -63,17 +63,15 @@ contract DomainToken is Token {
     
     
     //supply tokens for experiment
-    function supplyDomainTokens (uint256 tokens) public returns (uint256) {
+    function supplyDomainTokens (uint256 tokens) public {
         balances[msg.sender] += tokens;
         totalDomainToken += tokens;
-        return balanceOf(msg.sender);
     }
     
     //deduct tokens for experiment
-    function deductDomainTokens (uint256 tokens) public returns (uint256) {
+    function deductDomainTokens (uint256 tokens) public {
         require (balanceOf(msg.sender) >= tokens);
         balances[msg.sender] -= tokens;
         totalDomainToken -= tokens;
-        return balanceOf(msg.sender);
     }
 }

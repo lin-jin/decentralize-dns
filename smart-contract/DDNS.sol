@@ -4,7 +4,7 @@ import './DomainToken.sol';
 
 contract DDNS{
     
-    address constant tokenContractAddr = 0xe394b960F825d4b3B8BBe413BfA2da6771f83077;
+    address constant tokenContractAddr = 0x4295EcBE401d165E4FA9D05BdE084A961f01990b;
     DomainToken token = DomainToken(tokenContractAddr);
     
     enum Stage {Init, Vote, Done}
@@ -13,6 +13,7 @@ contract DDNS{
     
     
     event NewRequest (bytes32 hash);
+
     
     struct Record {
         address owner;
@@ -35,8 +36,8 @@ contract DDNS{
         Stage stage;
         uint256 votingWeight;
         int256 result;
-        bytes15[] candidates;
-        mapping (bytes15 => uint256) votes;
+        bytes32[] candidates;
+        mapping (bytes32 => uint256) votes;
         address[] committees;
         mapping (address => uint256) weights;
         mapping (address => bool) redeemed;
@@ -53,7 +54,7 @@ contract DDNS{
     uint256 requestInterval;
     uint256 maxRequestTime;
     uint8 validThreshold;
-    uint16 committeeSize;
+    uint16 public committeeSize;
     
     
     constructor () public {
@@ -142,7 +143,7 @@ contract DDNS{
                 }
             }
             if(_keys[i] < committeeSize && !dup) {
-                uint256 random = uint256(keccak256(abi.encodePacked(_hash, msg.sender, _keys[i] + uint256(_hash))));
+                uint256 random = uint256(keccak256(abi.encodePacked(_hash, msg.sender, _keys[i])));
                 if (115792089237316195423570985008687907853269984665640564039457584007913129639935 / votingTable[_hash].totalStake * stakes[msg.sender] > random) {
                     weight += 1;
                 }
@@ -153,7 +154,7 @@ contract DDNS{
     }
     
     
-    function vote (bytes32 _hash, uint256[] memory _keys, bytes15[] memory _candidates) public {
+    function vote (bytes32 _hash, uint256[] memory _keys, bytes32[] memory _candidates) public {
         require(votingTable[_hash].stage == Stage.Vote, 'not in voting stage');
         require(block.timestamp > lastChange[msg.sender], 'Stake has changed since the vote begins, not allow to vote');
         uint256 weight = getWeight(_hash, _keys);
@@ -251,7 +252,7 @@ contract DDNS{
             
             //concatenate histogram
             for (uint256 i = 0; i < votingTable[dnsTable[_domain].request].candidates.length; i++) {
-                bytes15 candidate = votingTable[dnsTable[_domain].request].candidates[i];
+                bytes32 candidate = votingTable[dnsTable[_domain].request].candidates[i];
                 
                 result = abi.encodePacked(result, candidate, " ", uintToAscii(votingTable[dnsTable[_domain].request].votes[candidate]), "|");
             }
@@ -290,6 +291,8 @@ contract DDNS{
     //     return votingTable[_hash].votes[_candidate];
     // }
 }
+
+
 
 
 

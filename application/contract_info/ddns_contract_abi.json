@@ -190,6 +190,20 @@
 		"type": "function"
 	},
 	{
+		"constant": true,
+		"inputs": [],
+		"name": "committeeSize",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint16"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"constant": false,
 		"inputs": [
 			{
@@ -202,6 +216,28 @@
 			}
 		],
 		"name": "delegate",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_hash",
+				"type": "bytes32"
+			},
+			{
+				"name": "_keys",
+				"type": "uint256[]"
+			},
+			{
+				"name": "_candidates",
+				"type": "bytes32[]"
+			}
+		],
+		"name": "vote",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -239,28 +275,6 @@
 			}
 		],
 		"name": "retrieveStakes",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_hash",
-				"type": "bytes32"
-			},
-			{
-				"name": "_keys",
-				"type": "uint256[]"
-			},
-			{
-				"name": "_candidates",
-				"type": "bytes15[]"
-			}
-		],
-		"name": "vote",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",

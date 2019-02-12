@@ -6,9 +6,9 @@ const web3 = new Web3('ws://127.0.0.1:8545')
 
 const fs = require('fs')
 const dns = require('dns')
-const BigNumber = require('bignumber.js');
+const BN = web3.utils.BN;
 
-const max_num = new BigNumber('115792089237316195423570985008687907853269984665640564039457584007913129639935')
+const max_num = web3.utils.toBN('115792089237316195423570985008687907853269984665640564039457584007913129639935')
 const account_index = process.argv[2]
 
 if (isNaN(account_index) || account_index > 6 || account_index < 0) {
@@ -18,16 +18,16 @@ if (isNaN(account_index) || account_index > 6 || account_index < 0) {
 
 
 
-const token_contract_addr = '0xdb328c5a3cee2a9d6e4bb92ea43b2228283261e5'
+const token_contract_addr = '0x34C2b4375515F99AfB0E9B8aF9119bf2B268DBdC'
 const token_contract_abi = JSON.parse(fs.readFileSync('../contract_info/token_contract_abi.json', 'utf8'))
 
-const ddns_contract_addr = '0x3d760469a504bcb7329a8f11d538c271174c33fc'
+const ddns_contract_addr = '0x30a426801ae2b65ea3cbbff739f4716ae88267f5'
 const ddns_contract_abi = JSON.parse(fs.readFileSync('../contract_info/ddns_contract_abi.json', 'utf8'))
 
 const token_contract = new web3.eth.Contract(token_contract_abi, token_contract_addr)
 const ddns_contract = new web3.eth.Contract(ddns_contract_abi, ddns_contract_addr)
 
-
+const committeeSize = 4
 
 web3.eth.getAccounts((err, result) => {
 	web3.eth.defaultAccount = result[account_index]
@@ -36,7 +36,12 @@ web3.eth.getAccounts((err, result) => {
 
 
 // ddns_contract.methods.committeeSize().call((err, result) => {
-// 	const committeeSize = result
+// 	if(!err) {
+// 		const committeeSize = result
+// 	}
+// 	else {
+// 		console.log(err)
+// 	}
 // })
 
 // token_contract.methods.balanceOf(web3.eth.defaultAccount).call((err, result) => {
@@ -122,17 +127,31 @@ async function handle_request(event) {
 
 // need to test *************************************************************
 function self_selection(hash, voting_args, stake) {
-	keys = [0]
-	// for (let i = 0; i < committeeSize; i++) {
-	// 	hex = web3.utils.soliditySha(hash, web3.eth.defaultAccount, i)
-	// 	rand = new BN(hex.substring(2,66), 16)
-	// 	total_stake = new BN(voting_args.totalStake, 10)
-	// 	stake = new BN(stake, 10)
-	// 	if(max_num.div(totalStake).mul(stake).gt(rand)) {
-	// 		keys.push(i)
-	// 	}
-	// }
+	keys = []
 	
+	for (let i = 0; i < committeeSize; i++) {
+		hex = web3.utils.soliditySha3(hash, web3.eth.defaultAccount, i)
+		rand = web3.utils.toBN(hex)
+		total_stake = web3.utils.toBN(voting_args.totalStake)
+		stake = web3.utils.toBN(stake)
+
+
+		console.log('***********************************************************************')
+		console.log('hash', hash)
+		console.log('account', web3.eth.defaultAccount)
+		console.log('key', i)
+		console.log('rand', rand.toString)	
+		console.log('totalStake', totalStake.toString())
+		console.log('stake', stake.toString())
+		console.log('value', max_num.div(totalStake).mul(stake).toString())
+
+
+		if(max_num.div(totalStake).mul(stake).gt(rand)) {
+			keys.push(i)
+		}
+	}
+
+
 	return keys
 }
 
@@ -169,7 +188,7 @@ function handle_record_request(hash, voting_args, keys) {
 
 function vote(hash, keys, records) {
 	candidates = records.map((x) => {
-		return padding_bytes32(web3.utils.toHex(x))
+		return web3.utils.toHex(x).padEnd(66, '0')
 	})
 
 	ddns_contract.methods.vote(hash, keys, candidates).send({
@@ -185,9 +204,6 @@ function vote(hash, keys, records) {
 	})
 }
 
-function padding_bytes32(input) {
-	return input.padEnd(66, '0')
-}
 
 
 

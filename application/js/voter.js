@@ -11,23 +11,23 @@ const BN = web3.utils.BN;
 const max_num = web3.utils.toBN('115792089237316195423570985008687907853269984665640564039457584007913129639935')
 const account_index = process.argv[2]
 
-if (isNaN(account_index) || account_index > 6 || account_index < 0) {
+if (isNaN(account_index) || account_index > 10 || account_index < 0) {
 	console.log("wrong account index")
 	process.exit()
 }
 
 
 
-const token_contract_addr = '0x34C2b4375515F99AfB0E9B8aF9119bf2B268DBdC'
+const token_contract_addr = '0x3bd2cca2cddcc000e38f5f1facd4295259bdd631'
 const token_contract_abi = JSON.parse(fs.readFileSync('../contract_info/token_contract_abi.json', 'utf8'))
 
-const ddns_contract_addr = '0x30a426801ae2b65ea3cbbff739f4716ae88267f5'
+const ddns_contract_addr = '0x73b98ae3c89613952e1c17b565f23fd448df68fd'
 const ddns_contract_abi = JSON.parse(fs.readFileSync('../contract_info/ddns_contract_abi.json', 'utf8'))
 
 const token_contract = new web3.eth.Contract(token_contract_abi, token_contract_addr)
 const ddns_contract = new web3.eth.Contract(ddns_contract_abi, ddns_contract_addr)
 
-const committeeSize = 4
+const committeeSize = 10
 
 web3.eth.getAccounts((err, result) => {
 	web3.eth.defaultAccount = result[account_index]
@@ -138,20 +138,20 @@ function self_selection(hash, voting_args, stake) {
 
 		console.log('***********************************************************************')
 		console.log('hash', hash)
-		console.log('account', web3.eth.defaultAccount)
-		console.log('key', i)
-		console.log('rand', rand.toString)	
-		console.log('totalStake', totalStake.toString())
+		//console.log('account', web3.eth.defaultAccount)
+		//console.log('key', i)
+		console.log('rand', rand.toString())	
+		console.log('totalStake', total_stake.toString())
 		console.log('stake', stake.toString())
-		console.log('value', max_num.div(totalStake).mul(stake).toString())
+		console.log('value', max_num.div(total_stake).mul(stake).toString())
 
 
-		if(max_num.div(totalStake).mul(stake).gt(rand)) {
+		if(max_num.div(total_stake).mul(stake).gt(rand)) {
 			keys.push(i)
 		}
 	}
 
-
+	console.log('keys', keys)
 	return keys
 }
 

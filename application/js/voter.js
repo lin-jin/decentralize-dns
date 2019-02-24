@@ -10,6 +10,7 @@ const BN = web3.utils.BN;
 
 const max_num = web3.utils.toBN('115792089237316195423570985008687907853269984665640564039457584007913129639935')
 const account_index = process.argv[2]
+// const tokens = process.argv[3]
 
 if (isNaN(account_index) || account_index > 10 || account_index < 0) {
 	console.log("wrong account index")
@@ -18,55 +19,76 @@ if (isNaN(account_index) || account_index > 10 || account_index < 0) {
 
 
 
-const token_contract_addr = '0x3bd2cca2cddcc000e38f5f1facd4295259bdd631'
+const token_contract_addr = '0xe78a0f7e598cc8b0bb87894b0f60dd2a88d6a8ab'
 const token_contract_abi = JSON.parse(fs.readFileSync('../contract_info/token_contract_abi.json', 'utf8'))
 
-const ddns_contract_addr = '0x73b98ae3c89613952e1c17b565f23fd448df68fd'
+const ddns_contract_addr = '0x5b1869d9a4c187f2eaa108f3062412ecf0526b24'
 const ddns_contract_abi = JSON.parse(fs.readFileSync('../contract_info/ddns_contract_abi.json', 'utf8'))
 
 const token_contract = new web3.eth.Contract(token_contract_abi, token_contract_addr)
 const ddns_contract = new web3.eth.Contract(ddns_contract_abi, ddns_contract_addr)
 
-const committeeSize = 10
 
-web3.eth.getAccounts((err, result) => {
-	web3.eth.defaultAccount = result[account_index]
+
+const tokens = Math.floor(Math.random() * 10000)
+web3.eth.getAccounts()
+.then((value) => {
+	web3.eth.defaultAccount = value[account_index]
 	console.log("the default account is account" + account_index + ":", web3.eth.defaultAccount)
-})	
+})
+.catch((err) => {
+	console.log('Cannot get accounts', err)
+})
+.then(() => {
+	token_contract.methods.supplyDomainTokens(tokens).send({
+		from: web3.eth.defaultAccount,
+		gas: 3000000
+	})
+})
+.catch((err) => {
+	console.log('Cannot assign default account.', err)
+})
+.then(() => {
+	console.log('Supplied tokens')
+	token_contract.methods.approve(ddns_contract_addr, tokens).send({
+		from: web3.eth.defaultAccount,
+		gas: 3000000
+	})
+})
+.catch((err) => {
+	console.log('Cannot supply tokens', err)
+})
+.then(() => {
+	console.log('Approved tokens')
+	ddns_contract.methods.sendStakes(tokens).send({
+		from: web3.eth.defaultAccount,
+		gas: 3000000
+	})
+})
+.catch((err) => {
+	console.log('Cannot approve stake', err)
+})
+.then(() => {
+	console.log('Sent stake')
+	console.log('Voter initialization is complete')
+})
+.catch((err) => {
+	console.log('Cannot send stake', err)
+})
 
 
-// ddns_contract.methods.committeeSize().call((err, result) => {
-// 	if(!err) {
-// 		const committeeSize = result
-// 	}
-// 	else {
-// 		console.log(err)
-// 	}
-// })
 
-// token_contract.methods.balanceOf(web3.eth.defaultAccount).call((err, result) => {
-// 	if (!err) {
-// 		token_contract.methods.approve(ddns_contract_addr, result).send({
-// 		from: web3.eth.defaultAccount,
-// 		gas:3000000
-// 		}, (err, res) => {
-// 			ddns_contract.methods.sendStakes(result).send({
-// 				from: web3.eth.defaultAccount,
-// 				gas:3000000
-// 			}, (err, res) => {
-// 				if (!err) {
-// 					console.log("send stake", result)
-// 					console.log("")
-// 				}
-// 				else {
-// 					console.log(err)
-// 				}
-// 			})
-// 		})
-// 	}
-// 	else {
-// 		console.log("no balanceof", err)
-// 	}
+
+
+let committeeSize
+ddns_contract.methods.committeeSize().call()
+.then((value) => {
+	committeeSize = value
+})
+.catch((err) => {
+	console.log('Cannot get committee size', err)
+})
+
 
 
 ddns_contract.events.NewRequest({fromBlock: 0})
@@ -99,33 +121,12 @@ async function handle_request(event) {
 		console.log("Not a committee member for voting", hash)
 	}
 
-
-
-	// ddns_contract.methods.votingTable(hash).call((err, voting_args) => {
-	// 	console.log(voting_args)
-	// 	ddns_contract.methods.stakes(web3.eth.defaultAccount).call((err, stake) => {
-	// 		var keys = self_selection(hash, voting_args, stake)
-	// 		if (keys.length > 0) {
-	// 			console.log("Selected as a committee member for voting", hash)
-	// 			if (voting_args.requestType == 1) {
-	// 				handle_record_request(hash, voting_args, keys)
-	// 			}
-	// 			if (voting_args.requestType == 2) {
-	// 				handle_claim_request(hash, voting_args, keys)
-	// 			}
-	// 		}
-	// 		else {
-	// 			console.log("Not a committee member for voting", hash)
-	// 		}
-	// 	})
-	// })
 }
 
 
 
 
 
-// need to test *************************************************************
 function self_selection(hash, voting_args, stake) {
 	keys = []
 	
@@ -136,14 +137,15 @@ function self_selection(hash, voting_args, stake) {
 		stake = web3.utils.toBN(stake)
 
 
-		console.log('***********************************************************************')
-		console.log('hash', hash)
-		//console.log('account', web3.eth.defaultAccount)
-		//console.log('key', i)
-		console.log('rand', rand.toString())	
-		console.log('totalStake', total_stake.toString())
-		console.log('stake', stake.toString())
-		console.log('value', max_num.div(total_stake).mul(stake).toString())
+		// console.log('***********************************************************************')
+		// console.log('hash', hash)
+		// console.log('account', web3.eth.defaultAccount)
+		// console.log('key', i)
+		// console.log('rand', rand.toString())	
+		// console.log('totalStake', total_stake.toString())
+		// console.log('stake', stake.toString())
+		// console.log('value', max_num.div(total_stake).mul(stake).toString())
+		// console.log('***********************************************************************')
 
 
 		if(max_num.div(total_stake).mul(stake).gt(rand)) {
@@ -194,14 +196,16 @@ function vote(hash, keys, records) {
 	ddns_contract.methods.vote(hash, keys, candidates).send({
 		from: web3.eth.defaultAccount,
 		gas:3000000
-	}, (err, result) => {
-		if (!err) {
-			console.log("vote for", hash, candidates)
-		}
-		else {
-			console.log(err)
-		}
 	})
+	.on('receipt', (receipt) => {
+		console.log('block number: ', receipt.blockNumber)
+		console.log('gas used:', web3.utils.toBN(receipt.gasUsed).toString())
+	})	
+	.then(() => {
+		console.log("vote for", hash, candidates)
+	}, err => {
+		console.log(err)
+	}) 
 }
 
 

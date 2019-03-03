@@ -1,0 +1,16 @@
+{
+  "name": "ddns",
+  "version": "1.0.0",
+  "description": "",
+  "main": "voter.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dns-sync": "^0.1.3",
+    "solc": "^0.5.4",
+    "web3": "^1.0.0-beta.46"
+  }
+}

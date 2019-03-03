@@ -4,22 +4,23 @@ import './DomainToken.sol';
 
 contract DDNS{
     
-    address constant tokenContractAddr = 0x4295EcBE401d165E4FA9D05BdE084A961f01990b;
-    DomainToken token = DomainToken(tokenContractAddr);
+    address tokenContractAddr; // = 0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab;
+    DomainToken token; // = DomainToken(tokenContractAddr);
     
     enum Stage {Init, Vote, Done}
-    enum Type {None, Propose, Claim}
-    enum Strength {None, VL, L, M, H, VH}
+    enum Type {None, IP, Ownership}
+    enum Mode {None, Claim, Secure}
     
     
     event NewRequest (bytes32 hash);
+    event VoteComplete (bytes32 hash);
 
     
     struct Record {
         address owner;
         address agent;
         uint256 lastVote;
-        Strength strength;
+        Mode mode;
         bytes record;
         uint256 lastUpdate;
         bytes32 request;
@@ -51,17 +52,18 @@ contract DDNS{
     mapping (bytes32 => Voting) public votingTable;
     mapping (bytes => Record) dnsTable;
     
-    uint256 requestInterval;
-    uint256 maxRequestTime;
-    uint8 validThreshold;
+    
+    uint8 validThreshold; 
     uint16 public committeeSize;
+    uint16 public committeeThreshold;
     
     
-    constructor () public {
-        requestInterval = 0;
-        maxRequestTime = 60;
-        validThreshold = 4;
-        committeeSize = 1;
+    constructor (address _tokenContractAddr) public {
+        tokenContractAddr = _tokenContractAddr;
+        token = DomainToken(tokenContractAddr);
+        validThreshold = 4; // 80% of the voters verifies the ownership.
+        committeeSize = 10;
+        committeeThreshold = 8;
     }
     
     
@@ -106,12 +108,12 @@ contract DDNS{
         bytes32 hash = keccak256(abi.encodePacked(msg.sender, _requestType, _domain, _cost, block.timestamp));
         require(votingTable[hash].timestamp == 0, 'duplicate request');
         
-        if (_requestType == Type.Claim) {
+        if (_requestType == Type.Ownership) {
             votingTable[hash].sender = msg.sender;
         }
-        else if (_requestType == Type.Propose){
+        else if (_requestType == Type.IP){
             require(dnsTable[_domain].owner == address(0x0), 'domain has owner, only owner can make changes');
-            require(block.timestamp - votingTable[dnsTable[_domain].request].timestamp > requestInterval, 'please wait for request interval for the next request');
+            // require(block.timestamp - votingTable[dnsTable[_domain].request].timestamp > requestInterval, 'please wait for request interval for the next request');
             dnsTable[_domain].request = hash;
         }
         else {
@@ -130,8 +132,8 @@ contract DDNS{
     }
     
     
-    function getWeight (bytes32 _hash, uint256[] memory _keys) private returns (uint256) {
-        uint256 weight = 0;
+    function getWeight (bytes32 _hash, uint256[] memory _keys) private view returns (uint96) {
+        uint96 weight = 0;
         bool dup;
         
         for (uint256 i = 0; i < _keys.length; i++) {
@@ -143,7 +145,7 @@ contract DDNS{
                 }
             }
             if(_keys[i] < committeeSize && !dup) {
-                uint256 random = uint256(keccak256(abi.encodePacked(_hash, msg.sender, _keys[i])));
+                uint256 random = uint256(keccak256(abi.encodePacked(_hash, msg.sender, uint256(_hash) + _keys[i])));
                 if (115792089237316195423570985008687907853269984665640564039457584007913129639935 / votingTable[_hash].totalStake * stakes[msg.sender] > random) {
                     weight += 1;
                 }
@@ -155,18 +157,20 @@ contract DDNS{
     
     
     function vote (bytes32 _hash, uint256[] memory _keys, bytes32[] memory _candidates) public {
-        require(votingTable[_hash].stage == Stage.Vote, 'not in voting stage');
+        require(votingTable[_hash].stage == Stage.Vote, 'This voting is not in voting stage');
         require(block.timestamp > lastChange[msg.sender], 'Stake has changed since the vote begins, not allow to vote');
-        uint256 weight = getWeight(_hash, _keys);
-        require(weight > 0, 'voter is not in the committee');
+        require(votingTable[_hash].weights[msg.sender] == 0, 'Duplicate Vote');
         
-        if (votingTable[_hash].requestType == Type.Claim) {
+        uint96 weight = getWeight(_hash, _keys);
+        require(weight > 0, 'Voter is not in the committee');
+        
+        if (votingTable[_hash].requestType == Type.Ownership) {
             // vote for claim
-            if (_candidates[0] == bytes15('true')) {
-                votingTable[_hash].result += int256(weight) / validThreshold;
+            if (_candidates[0] == bytes32('true')) {
+                votingTable[_hash].result += int96(weight);
             }
-            else if (_candidates[0] == bytes15('false')) {
-                votingTable[_hash].result -= int256(weight);
+            else if (_candidates[0] == bytes32('false')) {
+                votingTable[_hash].result -= int96(weight) * validThreshold;
             }
             else {
                 revert("vote is either not true or false");
@@ -191,36 +195,44 @@ contract DDNS{
             }
         }
         
+        // bytes memory committee = abi.encodePacked(bytes20(msg.sender), weight);
         votingTable[_hash].weights[msg.sender] = weight;
         votingTable[_hash].committees.push(msg.sender);
         votingTable[_hash].votingWeight += weight;
         
         
         // determine if the voting process is complete
-        if (block.timestamp - votingTable[_hash].timestamp >= maxRequestTime) {
+        if (votingTable[_hash].votingWeight > committeeThreshold) {
             votingTable[_hash].stage = Stage.Done;
             voteComplete(_hash);
+            emit VoteComplete(_hash);
         }
     }
     
     
+    // requester can call vote complete for ownership
     function voteComplete (bytes32 _hash) private {
-        if (votingTable[_hash].requestType == Type.Claim && votingTable[_hash].result > 0) {
+        if (votingTable[_hash].requestType == Type.Ownership && votingTable[_hash].result > 0) {
             bytes memory domain = votingTable[_hash].domain;
-            if (dnsTable[domain].owner == address(0x0)) {
-                dnsTable[domain].owner = votingTable[_hash].sender;
-                dnsTable[domain].strength = Strength.VL;
+            
+            if (dnsTable[domain].mode == Mode.Claim) {
+                dnsTable[domain].owner = msg.sender;
+                dnsTable[domain].mode = Mode.Secure;
                 dnsTable[domain].lastVote = votingTable[_hash].timestamp;
             }
-            else if (dnsTable[domain].owner == msg.sender) {
-                // increase strength
-                
-
+            else if (dnsTable[domain].owner != msg.sender) {
+                dnsTable[domain].mode = Mode.Claim;
             }
             else {
-                // decrease strength
+                dnsTable[domain].lastVote = votingTable[_hash].timestamp;
             }
         }
+    }
+    
+    
+    function transfer (bytes memory _domain, address _nextOwner) public {
+        require(msg.sender == dnsTable[_domain].owner, "Only domain owner can transfer ownership.");
+        dnsTable[_domain].owner = _nextOwner;
     }
     
     
@@ -282,6 +294,28 @@ contract DDNS{
     }
     
     
+    // function bytesToBytes32(bytes memory input) private pure returns (bytes32) {
+    //     bytes32 output;
+    //     assembly {
+    //         output := mload(add(output, 32))
+    //     }
+    //     return output;
+    // }
+    
+    
+    // function committeeSplit(bytes32 committee) private pure returns (address, uint96) {
+    //     bytes20 part1;
+    //     bytes12 part2;
+    //     assembly {
+    //       let ptr := mload(0x40)
+    //       mstore(add(ptr,0x00), committee)
+    //       part1 := mload(add(ptr,0x00))
+    //       part2 := mload(add(ptr,0x14))
+    //     }
+        
+    //     return (address(part1), uint96(part2));
+    // }
+    
     // function getWeights (bytes32 _hash) view public returns (uint256 _weight) {
     //     return votingTable[_hash].weights[msg.sender];
     // }
@@ -291,9 +325,5 @@ contract DDNS{
     //     return votingTable[_hash].votes[_candidate];
     // }
 }
-
-
-
-
 
 

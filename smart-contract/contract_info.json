@@ -1,0 +1,685 @@
+{
+	"domain_token_contract_abi": [
+		{
+			"constant": true,
+			"inputs": [],
+			"name": "name",
+			"outputs": [
+				{
+					"name": "",
+					"type": "string"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "name()",
+			"signature": "0x06fdde03"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_spender",
+					"type": "address"
+				},
+				{
+					"name": "_value",
+					"type": "uint256"
+				}
+			],
+			"name": "approve",
+			"outputs": [
+				{
+					"name": "success",
+					"type": "bool"
+				}
+			],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "approve(address,uint256)",
+			"signature": "0x095ea7b3"
+		},
+		{
+			"constant": true,
+			"inputs": [],
+			"name": "totalSupply",
+			"outputs": [
+				{
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "totalSupply()",
+			"signature": "0x18160ddd"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_from",
+					"type": "address"
+				},
+				{
+					"name": "_to",
+					"type": "address"
+				},
+				{
+					"name": "_value",
+					"type": "uint256"
+				}
+			],
+			"name": "transferFrom",
+			"outputs": [
+				{
+					"name": "success",
+					"type": "bool"
+				}
+			],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "transferFrom(address,address,uint256)",
+			"signature": "0x23b872dd"
+		},
+		{
+			"constant": true,
+			"inputs": [],
+			"name": "decimals",
+			"outputs": [
+				{
+					"name": "",
+					"type": "uint8"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "decimals()",
+			"signature": "0x313ce567"
+		},
+		{
+			"constant": true,
+			"inputs": [],
+			"name": "totalDomainToken",
+			"outputs": [
+				{
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "totalDomainToken()",
+			"signature": "0x44d970c5"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "tokens",
+					"type": "uint256"
+				}
+			],
+			"name": "supplyDomainTokens",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "supplyDomainTokens(uint256)",
+			"signature": "0x598703e7"
+		},
+		{
+			"constant": true,
+			"inputs": [
+				{
+					"name": "_owner",
+					"type": "address"
+				}
+			],
+			"name": "balanceOf",
+			"outputs": [
+				{
+					"name": "balance",
+					"type": "uint256"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "balanceOf(address)",
+			"signature": "0x70a08231"
+		},
+		{
+			"constant": true,
+			"inputs": [],
+			"name": "symbol",
+			"outputs": [
+				{
+					"name": "",
+					"type": "string"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "symbol()",
+			"signature": "0x95d89b41"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_to",
+					"type": "address"
+				},
+				{
+					"name": "_value",
+					"type": "uint256"
+				}
+			],
+			"name": "transfer",
+			"outputs": [
+				{
+					"name": "success",
+					"type": "bool"
+				}
+			],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "transfer(address,uint256)",
+			"signature": "0xa9059cbb"
+		},
+		{
+			"constant": true,
+			"inputs": [
+				{
+					"name": "_owner",
+					"type": "address"
+				},
+				{
+					"name": "_spender",
+					"type": "address"
+				}
+			],
+			"name": "allowance",
+			"outputs": [
+				{
+					"name": "remaining",
+					"type": "uint256"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "allowance(address,address)",
+			"signature": "0xdd62ed3e"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "tokens",
+					"type": "uint256"
+				}
+			],
+			"name": "deductDomainTokens",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "deductDomainTokens(uint256)",
+			"signature": "0xe02255c5"
+		},
+		{
+			"inputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "constructor",
+			"signature": "constructor"
+		},
+		{
+			"anonymous": false,
+			"inputs": [
+				{
+					"indexed": true,
+					"name": "_from",
+					"type": "address"
+				},
+				{
+					"indexed": true,
+					"name": "_to",
+					"type": "address"
+				},
+				{
+					"indexed": false,
+					"name": "_value",
+					"type": "uint256"
+				}
+			],
+			"name": "Transfer",
+			"type": "event",
+			"funcName": "Transfer(address,address,uint256)",
+			"signature": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+		},
+		{
+			"anonymous": false,
+			"inputs": [
+				{
+					"indexed": true,
+					"name": "_owner",
+					"type": "address"
+				},
+				{
+					"indexed": true,
+					"name": "_spender",
+					"type": "address"
+				},
+				{
+					"indexed": false,
+					"name": "_value",
+					"type": "uint256"
+				}
+			],
+			"name": "Approval",
+			"type": "event",
+			"funcName": "Approval(address,address,uint256)",
+			"signature": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925"
+		}
+	],
+	"domain_token_contract_address": "0xded7130e0413f862e48800780b37aba79013b5b2",
+	"ddns_contract_abi": [
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_domain",
+					"type": "bytes"
+				}
+			],
+			"name": "withdraw",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "withdraw(bytes)",
+			"signature": "0x0968f264"
+		},
+		{
+			"constant": true,
+			"inputs": [
+				{
+					"name": "",
+					"type": "address"
+				}
+			],
+			"name": "stakes",
+			"outputs": [
+				{
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "stakes(address)",
+			"signature": "0x16934fc4"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_requestType",
+					"type": "uint8"
+				},
+				{
+					"name": "_domain",
+					"type": "bytes"
+				},
+				{
+					"name": "_cost",
+					"type": "uint256"
+				}
+			],
+			"name": "request",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "request(uint8,bytes,uint256)",
+			"signature": "0x19ac9f70"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_domain",
+					"type": "bytes"
+				},
+				{
+					"name": "_record",
+					"type": "bytes"
+				}
+			],
+			"name": "update",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "update(bytes,bytes)",
+			"signature": "0x3f37dce2"
+		},
+		{
+			"constant": true,
+			"inputs": [
+				{
+					"name": "",
+					"type": "address"
+				}
+			],
+			"name": "lastChange",
+			"outputs": [
+				{
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "lastChange(address)",
+			"signature": "0x44413c7b"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_stake",
+					"type": "uint256"
+				}
+			],
+			"name": "sendStakes",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "sendStakes(uint256)",
+			"signature": "0x48612e7f"
+		},
+		{
+			"constant": true,
+			"inputs": [],
+			"name": "committeeThreshold",
+			"outputs": [
+				{
+					"name": "",
+					"type": "uint16"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "committeeThreshold()",
+			"signature": "0x4dd0a0c9"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_voting",
+					"type": "bytes32[]"
+				}
+			],
+			"name": "redeem",
+			"outputs": [
+				{
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "redeem(bytes32[])",
+			"signature": "0x524c2a04"
+		},
+		{
+			"constant": true,
+			"inputs": [
+				{
+					"name": "",
+					"type": "bytes32"
+				}
+			],
+			"name": "votingTable",
+			"outputs": [
+				{
+					"name": "timestamp",
+					"type": "uint256"
+				},
+				{
+					"name": "requestType",
+					"type": "uint8"
+				},
+				{
+					"name": "sender",
+					"type": "address"
+				},
+				{
+					"name": "domain",
+					"type": "bytes"
+				},
+				{
+					"name": "cost",
+					"type": "uint256"
+				},
+				{
+					"name": "totalStake",
+					"type": "uint256"
+				},
+				{
+					"name": "stage",
+					"type": "uint8"
+				},
+				{
+					"name": "votingWeight",
+					"type": "uint256"
+				},
+				{
+					"name": "result",
+					"type": "int256"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "votingTable(bytes32)",
+			"signature": "0x621c2968"
+		},
+		{
+			"constant": true,
+			"inputs": [],
+			"name": "totalStake",
+			"outputs": [
+				{
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "totalStake()",
+			"signature": "0x8b0e9f3f"
+		},
+		{
+			"constant": true,
+			"inputs": [],
+			"name": "committeeSize",
+			"outputs": [
+				{
+					"name": "",
+					"type": "uint16"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "committeeSize()",
+			"signature": "0x9cf4364b"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_domain",
+					"type": "bytes"
+				},
+				{
+					"name": "_agent",
+					"type": "address"
+				}
+			],
+			"name": "delegate",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "delegate(bytes,address)",
+			"signature": "0xa44870ef"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_domain",
+					"type": "bytes"
+				},
+				{
+					"name": "_nextOwner",
+					"type": "address"
+				}
+			],
+			"name": "transfer",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "transfer(bytes,address)",
+			"signature": "0xbba1b1cd"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_hash",
+					"type": "bytes32"
+				},
+				{
+					"name": "_keys",
+					"type": "uint256[]"
+				},
+				{
+					"name": "_candidates",
+					"type": "bytes32[]"
+				}
+			],
+			"name": "vote",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "vote(bytes32,uint256[],bytes32[])",
+			"signature": "0xbba1cad4"
+		},
+		{
+			"constant": true,
+			"inputs": [
+				{
+					"name": "_domain",
+					"type": "bytes"
+				}
+			],
+			"name": "lookup",
+			"outputs": [
+				{
+					"name": "",
+					"type": "uint8"
+				},
+				{
+					"name": "",
+					"type": "bytes"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "lookup(bytes)",
+			"signature": "0xc3b2556d"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_stake",
+					"type": "uint256"
+				}
+			],
+			"name": "retrieveStakes",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "retrieveStakes(uint256)",
+			"signature": "0xe2506dae"
+		},
+		{
+			"inputs": [
+				{
+					"name": "_tokenContractAddr",
+					"type": "address"
+				}
+			],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "constructor",
+			"signature": "constructor"
+		},
+		{
+			"anonymous": false,
+			"inputs": [
+				{
+					"indexed": false,
+					"name": "hash",
+					"type": "bytes32"
+				}
+			],
+			"name": "NewRequest",
+			"type": "event",
+			"funcName": "NewRequest(bytes32)",
+			"signature": "0x50292ce9650f3a5d77a9a8199b26e3d3e1e6c1742e831605a35b59f54b302de7"
+		},
+		{
+			"anonymous": false,
+			"inputs": [
+				{
+					"indexed": false,
+					"name": "hash",
+					"type": "bytes32"
+				}
+			],
+			"name": "VoteComplete",
+			"type": "event",
+			"funcName": "VoteComplete(bytes32)",
+			"signature": "0x7c9c351205acf2550c42b76306b6c7a029107b0eface10848907299b6396455d"
+		}
+	],
+	"ddns_contract_address": "0xf438d54fe504b7e22172023d4be5ef2960c6976e"
+}

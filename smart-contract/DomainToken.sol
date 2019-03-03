@@ -14,6 +14,9 @@ contract DomainToken is Token {
     mapping (address => uint256) balances;
     mapping (address => mapping (address => uint256)) approved;
     
+    event Transfer(address indexed _from, address indexed _to, uint256 _value);
+    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
+    
     constructor () public {
         contractOwner = msg.sender;
         totalDomainToken = 0;
@@ -32,7 +35,7 @@ contract DomainToken is Token {
         require (balances[msg.sender] >= _value, 'balance is not enough');
         balances[msg.sender] -= _value;
         balances[_to] += _value;
-        emit Transfer(msg.sender, _to, _value);
+        // emit Transfer(msg.sender, _to, _value);
         return true;
     }
     
@@ -41,23 +44,19 @@ contract DomainToken is Token {
         balances[_from] -= _value;
         balances[_to] += _value;
         approved[_from][msg.sender] -= _value;
-        emit Transfer(_from, _to, _value);
+        // emit Transfer(_from, _to, _value);
         return true;
     }
     
     function approve(address _spender, uint256 _value) public returns (bool success) {
         approved[msg.sender][_spender] = _value;
-        emit Approval(msg.sender, _spender, _value);
+        // emit Approval(msg.sender, _spender, _value);
         return true;
     }
     
     function allowance(address _owner, address _spender) public view returns (uint256 remaining) {
         return approved[_owner][_spender];
     }
-    
-    event Transfer(address indexed _from, address indexed _to, uint256 _value);
-    
-    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
     
     
     

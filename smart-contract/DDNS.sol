@@ -13,6 +13,7 @@ contract DDNS{
     
     
     event NewRequest (bytes32 hash);
+    event NewVote (bytes32 hash, uint96 weight, bytes32[] candidates);
     event VoteComplete (bytes32 hash);
 
     
@@ -32,7 +33,7 @@ contract DDNS{
         Type requestType;
         address sender;
         bytes domain;
-        uint256 cost;
+        uint256 offer;
         uint256 totalStake;
         Stage stage;
         uint256 votingWeight;
@@ -94,7 +95,7 @@ contract DDNS{
         uint256 totalRedeemed = 0;
         for (uint i = 0; i< _voting.length; i++) {
             if(votingTable[_voting[i]].redeemed[msg.sender] == false) {
-                totalRedeemed += votingTable[_voting[i]].weights[msg.sender] * votingTable[_voting[i]].cost / votingTable[_voting[i]].votingWeight;
+                totalRedeemed += votingTable[_voting[i]].weights[msg.sender] * votingTable[_voting[i]].offer / votingTable[_voting[i]].votingWeight;
                 votingTable[_voting[i]].redeemed[msg.sender] = true;
             }
         }
@@ -104,8 +105,8 @@ contract DDNS{
     }
     
     
-    function request (Type _requestType, bytes memory _domain, uint256 _cost) public {
-        bytes32 hash = keccak256(abi.encodePacked(msg.sender, _requestType, _domain, _cost, block.timestamp));
+    function request (Type _requestType, bytes memory _domain, uint256 _offer) public {
+        bytes32 hash = keccak256(abi.encodePacked(msg.sender, _requestType, _domain, _offer, block.timestamp));
         require(votingTable[hash].timestamp == 0, 'duplicate request');
         
         if (_requestType == Type.Ownership) {
@@ -120,11 +121,11 @@ contract DDNS{
             revert("request type is not correct");
         }
 
-        require(deposite(_cost) == true);
+        require(deposite(_offer) == true);
         votingTable[hash].requestType = _requestType;
         votingTable[hash].timestamp = block.timestamp;
         votingTable[hash].domain = _domain;
-        votingTable[hash].cost = _cost;
+        votingTable[hash].offer = _offer;
         votingTable[hash].stage = Stage.Vote;
         votingTable[hash].totalStake = totalStake;
         
@@ -199,7 +200,7 @@ contract DDNS{
         votingTable[_hash].weights[msg.sender] = weight;
         votingTable[_hash].committees.push(msg.sender);
         votingTable[_hash].votingWeight += weight;
-        
+        emit NewVote(_hash, weight, _candidates);
         
         // determine if the voting process is complete
         if (votingTable[_hash].votingWeight > committeeThreshold) {
@@ -325,5 +326,9 @@ contract DDNS{
     //     return votingTable[_hash].votes[_candidate];
     // }
 }
+
+
+
+
 
 

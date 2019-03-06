@@ -70,19 +70,27 @@ function log_new_request(event) {
 	let hash = event.returnValues.hash
 	voting_logs[hash] = {}
 	voting_logs[hash].voter = []
-	ddns_contract.methods.votingTable(hash).call().then((voting_args) => {
+	ddns_contract.methods.votingTable(hash).call()
+	.then((voting_args) => {
 		voting_logs[hash].request_type = (voting_args.requestType == '1') ? 'ip' : 'ownership'
 		voting_logs[hash].domain = web3.utils.toAscii(voting_args.domain)
 		voting_logs[hash].offer = voting_args.offer
 		voting_logs[hash].total_stake = voting_args.totalStake
+		return web3.eth.getBlock(event.blockHash)
 	})
-	web3.eth.getBlock(event.blockHash).then((block) => {
+	.then((block) => {
 		voting_logs[hash].start_time = block.timestamp
+		return web3.eth.getTransactionReceipt(event.transactionHash)
 	})
- 	web3.eth.getTransactionReceipt(event.transactionHash).then((receipt) => {
- 		voting_logs[hash].request_gas = web3.utils.toBN(receipt.gasUsed).toString()
- 	})
+	.then((receipt) => {
+		voting_logs[hash].request_gas = web3.utils.toBN(receipt.gasUsed).toString()
+		export_voting_logs()
+	})
+	.catch((err) => {
+		console.log('log_new_request error', err)
+	})
 }
+
 
 
 
@@ -91,17 +99,33 @@ function log_new_vote(event) {
 	let voter = {}
 	voter.weight = web3.utils.toBN(event.returnValues.weight).toString()
 	voter.candidates = event.returnValues.candidates.map((x) => {
-		return web3.utils.hexToString(x).replace(/[^ -~]+/g, "");
+		try {
+			return web3.utils.hexToString(x).replace(/[^ -~]+/g, "")
+		}
+		catch (err) {
+			return x
+		}
 	})
-	web3.eth.getBlock(event.blockHash).then((block) => {
+	web3.eth.getBlock(event.blockHash)
+	.then((block) => {
 		voter.timestamp = block.timestamp
-		web3.eth.getTransaction(event.transactionHash).then((tx) => {
-			voter.address = tx.from
-			web3.eth.getTransactionReceipt(event.transactionHash).then((receipt) => {
-				voter.gas = web3.utils.toBN(receipt.gasUsed).toString()
-				voting_logs[hash].voter.push(voter)
-			})
-		})
+		return web3.eth.getTransaction(event.transactionHash)
+	})
+	.then((tx) => {
+		voter.address = tx.from
+		return web3.eth.getTransactionReceipt(event.transactionHash)
+	})
+	.then((receipt) => {
+		voter.gas = web3.utils.toBN(receipt.gasUsed).toString()
+		return ddns_contract.methods.stakes(voter.address).call()
+	})
+	.then((stake) => {
+		voter.stake = stake
+		voting_logs[hash].voter.push(voter)
+		export_voting_logs()
+	})
+	.catch((err) => {
+		console.log('log_new_vote error', err)
 	})
 }
 
@@ -109,9 +133,18 @@ function log_new_vote(event) {
 
 function log_vote_complete(event) {
 	let hash = event.returnValues.hash
-	web3.eth.getBlock(event.blockHash).then((block) => {
+	web3.eth.getBlock(event.blockHash)
+	.then((block) => {
 		voting_logs[hash].end_time = block.timestamp
-		setTimeout(() => {console.log(JSON.stringify(voting_logs[hash], null, '\t'))}, 2000)
-		
+		export_voting_logs()
 	})
 }
+
+
+
+function export_voting_logs() {
+	let data = JSON.stringify(voting_logs, null, '\t')
+	fs.writeFileSync('../../experiment/testnet/voting_logs.json', data)
+}
+
+

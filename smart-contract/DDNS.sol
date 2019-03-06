@@ -4,8 +4,8 @@ import './DomainToken.sol';
 
 contract DDNS{
     
-    address tokenContractAddr; // = 0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab;
-    DomainToken token; // = DomainToken(tokenContractAddr);
+    address tokenContractAddr;
+    DomainToken token;
     
     enum Stage {Init, Vote, Done}
     enum Type {None, IP, Ownership}
@@ -166,19 +166,14 @@ contract DDNS{
         require(weight > 0, 'Voter is not in the committee');
         
         if (votingTable[_hash].requestType == Type.Ownership) {
-            // vote for claim
-            if (_candidates[0] == bytes32('true')) {
+            if (pubkeyToAddress(_candidates[0], _candidates[1]) == votingTable[_hash].sender) {
                 votingTable[_hash].result += int96(weight);
             }
-            else if (_candidates[0] == bytes32('false')) {
-                votingTable[_hash].result -= int96(weight) * validThreshold;
-            }
             else {
-                revert("vote is either not true or false");
+                votingTable[_hash].result -= int96(weight) * validThreshold;
             }
         }
         else {
-            // vote for request
             for (uint8 i = 0; i < _candidates.length; i++) {
                 bool dup = false;
                 for (uint8 j = i + 1; j < _candidates.length; j++) {
@@ -294,6 +289,18 @@ contract DDNS{
         return s;
     }
     
+    
+    function pubkeyToAddress(bytes32 part1, bytes32 part2) private pure returns (address) {
+        bytes20 addr;
+        bytes32 hash = keccak256(abi.encodePacked(part1, part2));
+        assembly {
+            let ptr := mload(0x40)
+            mstore(add(ptr,0x00), hash)
+            addr := mload(add(ptr,0x0c))
+        }
+        
+        return address(addr);
+    }
     
     // function bytesToBytes32(bytes memory input) private pure returns (bytes32) {
     //     bytes32 output;

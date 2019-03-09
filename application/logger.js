@@ -1,5 +1,5 @@
 const Web3 = require('web3')
-const web3 = new Web3('ws://127.0.0.1:8545')
+const web3 = new Web3('ws://127.0.0.1:8546')
 
 const fs = require('fs')
 const BN = web3.utils.BN;
@@ -33,6 +33,23 @@ ddns_contract.events.NewRequest({
 
 
 
+ddns_contract.events.NewVoteForIP({
+	filter: {},
+	fromBlock: 'latest'
+}, (err, event) => {
+	if(err) {
+		console.log('NEW VOTE ERROR:', err)
+	}
+})
+.on('data', (event) => {
+	log_new_vote_for_ip(event)
+})
+.on('changed', (event) => {console.log('Changed', event.event, event.returnValues.hash)})
+.on('error', (event) => {console.error})
+
+
+
+
 ddns_contract.events.NewVote({
 	filter: {},
 	fromBlock: 'latest'
@@ -46,6 +63,7 @@ ddns_contract.events.NewVote({
 })
 .on('changed', (event) => {console.log('Changed', event.event, event.returnValues.hash)})
 .on('error', (event) => {console.error})
+
 
 
 
@@ -92,13 +110,40 @@ function log_new_request(event) {
 }
 
 
-
-
 function log_new_vote(event) {
 	let hash = event.returnValues.hash
 	let voter = {}
 	voter.weight = web3.utils.toBN(event.returnValues.weight).toString()
-	voter.candidates = event.returnValues.candidates.map((x) => {
+	voter.verified = event.returnValues.verified
+	web3.eth.getBlock(event.blockHash)
+	.then((block) => {
+		voter.timestamp = block.timestamp
+		return web3.eth.getTransaction(event.transactionHash)
+	})
+	.then((tx) => {
+		voter.address = tx.from
+		return web3.eth.getTransactionReceipt(event.transactionHash)
+	})
+	.then((receipt) => {
+		voter.gas = web3.utils.toBN(receipt.gasUsed).toString()
+		return ddns_contract.methods.stakes(voter.address).call()
+	})
+	.then((stake) => {
+		voter.stake = stake
+		voting_logs[hash].voter.push(voter)
+		export_voting_logs()
+	})
+	.catch((err) => {
+		console.log('log_new_vote error', err)
+	})
+}
+
+
+function log_new_vote_for_ip(event) {
+	let hash = event.returnValues.hash
+	let voter = {}
+	voter.weight = web3.utils.toBN(event.returnValues.weight).toString()
+	voter.ips = event.returnValues.ips.map((x) => {
 		try {
 			return web3.utils.hexToString(x).replace(/[^ -~]+/g, "")
 		}

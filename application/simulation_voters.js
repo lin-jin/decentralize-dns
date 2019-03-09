@@ -2,7 +2,7 @@
 
 
 const Web3 = require('web3')
-const web3 = new Web3('ws://127.0.0.1:8545')
+const web3 = new Web3('ws://127.0.0.1:8546')
 
 const fs = require('fs')
 const { Resolver } = require('dns').promises
@@ -125,7 +125,7 @@ async function handle_request(event, voter) {
 			handle_IP_request(hash, voting_args, keys, voter)
 		}
 		if (voting_args.requestType == 2) {
-			handle_claim_request(hash, voting_args, keys, voter)
+			handle_ownership_request(hash, voting_args, keys, voter)
 		}
 	}
 
@@ -152,41 +152,34 @@ function self_selection(hash, voting_args, stake, voter) {
 
 
 
-function handle_IP_request(hash, voting_args, keys, voter) {
-	const domain = web3.utils.toAscii(voting_args.domain)
-	const resolver = new Resolver()
-	resolver.setServers([voter.open_resolver])
-
-	resolver.resolve4(domain)
-	.then((records) => {
-		vote(hash, keys, records, voter)
-	})
-	.catch((err) => {
-		console.log('retrive A record error', err)
-	})	
-}
-
-
-
-function handle_claim_request(hash, voting_args, keys, voter) {
+function handle_ownership_request(hash, voting_args, keys, voter) {
 	const domain = web3.utils.toAscii(voting_args.domain)
 	const resolver = new Resolver()
 	resolver.setServers([voter.open_resolver])
 
 	resolver.resolveTxt(domain)
 	.then((records) => {
-		let public_key
-		let part1, part2
-		try {
-			 public_key = records[0][0]
-			 part1 = public_key.slice(0,66)
-			 part2 = '0x' + public_key.slice(66, 130)
+		let record0 = records[0][0]
+		let record1 = records[1][0]
+		let msg = '0x0000000000000000000000000000000000000000000000000000000000000000'
+		let v = 0
+		let r = '0x0000000000000000000000000000000000000000000000000000000000000000'
+		let s = '0x0000000000000000000000000000000000000000000000000000000000000000'
+		if(record0.startsWith('msg') && record1.startsWith('sig')) {
+			msg = record0.slice(4)
+			sig = record1.slice(4)
+			r = sig.slice(0, 66)
+			s = '0x' + sig.slice(66, 130)
+			v = web3.utils.toDecimal('0x' + sig.slice(130, 132)) + 27
 		}
-		catch (err) {
-			part1 = '0x00'
-			part2 = '0x00'
+		if(record1.startsWith('msg') && record0.startsWith('sig')) {
+			sig = record0.slice(4)
+			msg = record1.slice(4)
+			r = sig.slice(0, 66)
+			s = '0x' + sig.slice(66, 130)
+			v = web3.utils.toDecimal('0x' + sig.slice(130, 132)) + 27
 		}
-		vote(hash, keys, [part1, part2], voter)
+		vote(hash, keys, msg, v, r, s, voter)
 	})
 	.catch((err) => {
 		console.log('retrive TXT record error', err)
@@ -195,12 +188,46 @@ function handle_claim_request(hash, voting_args, keys, voter) {
 
 
 
-function vote(hash, keys, records, voter) {
-	candidates = records.map((x) => {
+function vote(hash, keys, msg, v, r, s, voter) {
+
+	ddns_contract.methods.vote(hash, keys, msg, v, r, s).send({
+		from: voter.address,
+		gas:3000000
+	})
+	// .on('receipt', receipt => {
+	// 	console.log(receipt)
+	// })
+	.catch((error) => {
+		console.log(voter.address, 'Error', JSON.parse(error.message.substr(12, error.message.length)).message)
+	})
+}
+
+
+
+function handle_IP_request(hash, voting_args, keys, voter) {
+	const domain = web3.utils.toAscii(voting_args.domain)
+	const resolver = new Resolver()
+	resolver.setServers([voter.open_resolver])
+
+	resolver.resolve4(domain)
+	.then((records) => {
+		voteForIP(hash, keys, records, voter)
+	})
+	.catch((err) => {
+		console.log('retrive A record error', err)
+	})	
+}
+
+
+
+
+
+function voteForIP(hash, keys, records, voter) {
+	ips = records.map((x) => {
 		return web3.utils.toHex(x).padEnd(66, '0')
 	})
 
-	ddns_contract.methods.vote(hash, keys, candidates).send({
+	ddns_contract.methods.voteForIP(hash, keys, ips).send({
 		from: voter.address,
 		gas:3000000
 	})

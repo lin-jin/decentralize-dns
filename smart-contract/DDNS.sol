@@ -55,17 +55,15 @@ contract DDNS{
     mapping (bytes => Record) dnsTable;
     
     
-    uint8 validThreshold; 
     uint16 public committeeSize;
     uint16 public committeeThreshold;
     
     
-    constructor (address _tokenContractAddr) public {
+    constructor (address _tokenContractAddr, uint16 _committeeSize, uint16 _committeeThreshold) public {
         tokenContractAddr = _tokenContractAddr;
         token = DomainToken(tokenContractAddr);
-        validThreshold = 4; // 80% of the voters verifies the ownership.
-        committeeSize = 10;
-        committeeThreshold = 8;
+        committeeSize = _committeeSize;
+        committeeThreshold = _committeeThreshold;
     }
     
     
@@ -177,17 +175,18 @@ contract DDNS{
     
     
     
-    function vote (bytes32 _hash, uint256[] memory _keys, bytes32 _msg, uint8 _v, bytes32 _r, bytes32 _s) eligibleVote (_hash, Type.Ownership) public {
+    function vote (bytes32 _hash, uint256[] memory _keys, bytes memory _pubKey) eligibleVote (_hash, Type.Ownership) public {
         uint96 weight = getWeight(_hash, _keys);
         require(weight > 0, 'Voter is not in the committee');
         
-        bool verified = getSigner(_msg, _v, _r, _s) == votingTable[_hash].sender;
+        // bool verified = getSigner(_msg, _v, _r, _s) == votingTable[_hash].sender;
+        bool verified = pubkeyToAddress(_pubKey) == votingTable[_hash].sender;
         
         if (verified) {
             votingTable[_hash].result += int96(weight);
         }
         else {
-            votingTable[_hash].result -= int96(weight) * validThreshold;
+            votingTable[_hash].result -= int96(weight);
         }
 
         addVoter(_hash, weight);
@@ -228,7 +227,6 @@ contract DDNS{
             voteComplete(_hash);
         }
     }
-    
     
     
     
@@ -316,13 +314,27 @@ contract DDNS{
     }
     
     
+
+    function pubkeyToAddress(bytes memory pubKey) public view returns (address) {
+        bytes20 addr;
+        bytes32 hash = keccak256(abi.encodePacked(pubKey));
+        assembly {
+            let ptr := mload(0x40)
+            mstore(add(ptr,0x00), hash)
+            addr := mload(add(ptr,0x0c))
+        }
+        
+        return address(addr);
+    }
+    
+    
+    
     function getSigner(bytes32 hash, uint8 v, bytes32 r, bytes32 s) public pure returns (address) {
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         bytes32 prefixedHash = keccak256(abi.encodePacked(prefix, hash));
         return ecrecover(prefixedHash, v, r, s);
     }
     
-
     
     // function bytesToBytes32(bytes memory input) private pure returns (bytes32) {
     //     bytes32 output;

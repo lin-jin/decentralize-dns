@@ -17,69 +17,56 @@ const ddns_contract = new web3.eth.Contract(ddns_contract_abi, ddns_contract_add
 
 
 let voting_logs = {}
-ddns_contract.events.NewRequest({
-	filter: {},
-	fromBlock: 'latest'
-}, (err, event) => {
-	if(err) {
-		console.log('NEW REQUEST ERROR:', err)
-	}
+let start_block
+let end_block
+
+ddns_contract.getPastEvents('NewRequest', {
+	fromBlock: 0, 
+	toBlock: 'latest'
 })
-.on('data', (event) => {
-	log_new_request(event)
+.then((events) => {
+	start_block = events[0].blockNumber
+	events.forEach((event) => {
+		log_new_request(event)
+	})
+
+	return ddns_contract.getPastEvents('VoteComplete', {
+		fromBlock: 0, 
+		toBlock: 'latest'
+	})
+	.then((events) => {
+		end_block = events[events.length - 1].blockNumber
+		events.forEach((event) => {
+			log_vote_complete(event)
+		})
+	})
 })
-.on('changed', (event) => {console.log('Changed', event.event, event.returnValues.hash)})
-.on('error', (event) => {console.error})
-
-
-
-ddns_contract.events.NewVoteForIP({
-	filter: {},
-	fromBlock: 'latest'
-}, (err, event) => {
-	if(err) {
-		console.log('NEW VOTE ERROR:', err)
-	}
+.then(() => {
+	// let blocks = Array.from(new Array(end_block - start_block + 1), (x,i) => i + start_block)
+	let block = start_block
+	var timer = setInterval(() => {
+		
+		ddns_contract.getPastEvents('NewVote', {
+			fromBlock: block, toBlock: block
+		})
+		.then((events) => {
+			if(events.length > 0) {
+				events.forEach((event) => {
+					log_new_vote(event)
+				})
+				console.log('finished block', events[0].blockNumber)
+				if(events[0].blockNumber == end_block) {
+					export_voting_logs()
+				}
+			}
+		})
+		block += 1
+		if(block > end_block) {
+			clearInterval(timer)
+		}
+	}, 1000)
 })
-.on('data', (event) => {
-	log_new_vote_for_ip(event)
-})
-.on('changed', (event) => {console.log('Changed', event.event, event.returnValues.hash)})
-.on('error', (event) => {console.error})
 
-
-
-
-ddns_contract.events.NewVote({
-	filter: {},
-	fromBlock: 'latest'
-}, (err, event) => {
-	if(err) {
-		console.log('NEW VOTE ERROR:', err)
-	}
-})
-.on('data', (event) => {
-	log_new_vote(event)
-})
-.on('changed', (event) => {console.log('Changed', event.event, event.returnValues.hash)})
-.on('error', (event) => {console.error})
-
-
-
-
-ddns_contract.events.VoteComplete({
-	filter: {},
-	fromBlock: 'latest'
-}, (err, event) => {
-	if(err) {
-		console.log('VOTE COMPLETE ERROR:', err)
-	}
-})
-.on('data', (event) => {
-	log_vote_complete(event)
-})
-.on('changed', (event) => {console.log('Changed', event.event, event.returnValues.hash)})
-.on('error', (event) => {console.error})
 
 
 
@@ -193,15 +180,16 @@ function log_vote_complete(event) {
 function export_voting_logs() {
 	let data = JSON.stringify(voting_logs, null, '\t')
 	fs.writeFileSync('../../experiment/testnet/voting_logs.json', data)
+	process.exit()
 }
 
 
 
 
 
-setInterval(() => {
-	export_voting_logs()
-}, 15000)
+// setInterval(() => {
+// 	export_voting_logs()
+// }, 15000)
 
 
 

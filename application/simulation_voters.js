@@ -64,7 +64,7 @@ web3.eth.getAccounts()
 
 
 function init_stakes(address, index) {
-	let stakes = Math.floor(Math.random() * 10000) + 1
+	let stakes = Math.floor(Math.random() * 90000) + 10000
 	domain_token_contract.methods.supplyDomainTokens(stakes).send({
 		from: address,
 		gas: 3000000
@@ -157,40 +157,59 @@ function handle_ownership_request(hash, voting_args, keys, voter) {
 	const resolver = new Resolver()
 	resolver.setServers([voter.open_resolver])
 
+	let public_key = '0x00'
 	resolver.resolveTxt(domain)
 	.then((records) => {
-		let record0 = records[0][0]
-		let record1 = records[1][0]
-		let msg = '0x0000000000000000000000000000000000000000000000000000000000000000'
-		let v = 0
-		let r = '0x0000000000000000000000000000000000000000000000000000000000000000'
-		let s = '0x0000000000000000000000000000000000000000000000000000000000000000'
-		if(record0.startsWith('msg') && record1.startsWith('sig')) {
-			msg = record0.slice(4)
-			sig = record1.slice(4)
-			r = sig.slice(0, 66)
-			s = '0x' + sig.slice(66, 130)
-			v = web3.utils.toDecimal('0x' + sig.slice(130, 132)) + 27
+		if (('0x' + web3.utils.soliditySha3(records[0][0]).slice(26)) == voting_args.sender.toLowerCase()) {
+			public_key = records[0][0]
 		}
-		if(record1.startsWith('msg') && record0.startsWith('sig')) {
-			sig = record0.slice(4)
-			msg = record1.slice(4)
-			r = sig.slice(0, 66)
-			s = '0x' + sig.slice(66, 130)
-			v = web3.utils.toDecimal('0x' + sig.slice(130, 132)) + 27
-		}
-		vote(hash, keys, msg, v, r, s, voter)
+		vote(hash, keys, public_key, voter)
 	})
 	.catch((err) => {
-		console.log('retrive TXT record error', err)
+		vote(hash, keys, public_key, voter)
+		// console.log('retrive TXT record error', err)
 	})
 }
 
+// function handle_ownership_request(hash, voting_args, keys, voter) {
+// 	const domain = web3.utils.toAscii(voting_args.domain)
+// 	const resolver = new Resolver()
+// 	resolver.setServers([voter.open_resolver])
+
+// 	resolver.resolveTxt(domain)
+// 	.then((records) => {
+// 		let record0 = records[0][0]
+// 		let record1 = records[1][0]
+// 		let msg = '0x0000000000000000000000000000000000000000000000000000000000000000'
+// 		let v = 0
+// 		let r = '0x0000000000000000000000000000000000000000000000000000000000000000'
+// 		let s = '0x0000000000000000000000000000000000000000000000000000000000000000'
+// 		if(record0.startsWith('msg') && record1.startsWith('sig')) {
+// 			msg = record0.slice(4)
+// 			sig = record1.slice(4)
+// 			r = sig.slice(0, 66)
+// 			s = '0x' + sig.slice(66, 130)
+// 			v = web3.utils.toDecimal('0x' + sig.slice(130, 132)) + 27
+// 		}
+// 		if(record1.startsWith('msg') && record0.startsWith('sig')) {
+// 			sig = record0.slice(4)
+// 			msg = record1.slice(4)
+// 			r = sig.slice(0, 66)
+// 			s = '0x' + sig.slice(66, 130)
+// 			v = web3.utils.toDecimal('0x' + sig.slice(130, 132)) + 27
+// 		}
+// 		vote(hash, keys, msg, v, r, s, voter)
+// 	})
+// 	.catch((err) => {
+// 		console.log('retrive TXT record error', err)
+// 	})
+// }
 
 
-function vote(hash, keys, msg, v, r, s, voter) {
 
-	ddns_contract.methods.vote(hash, keys, msg, v, r, s).send({
+function vote(hash, keys, public_key, voter) {
+
+	ddns_contract.methods.vote(hash, keys, public_key).send({
 		from: voter.address,
 		gas:3000000
 	})
@@ -198,7 +217,8 @@ function vote(hash, keys, msg, v, r, s, voter) {
 	// 	console.log(receipt)
 	// })
 	.catch((error) => {
-		console.log(voter.address, 'Error', JSON.parse(error.message.substr(12, error.message.length)).message)
+		// console.log(voter.address, 'Error', JSON.parse(error.message.substr(12, error.message.length)).message)
+		console.log(voter.address, 'Error', error)
 	})
 }
 

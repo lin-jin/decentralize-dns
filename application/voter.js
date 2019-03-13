@@ -2,7 +2,7 @@
 
 
 const Web3 = require('web3')
-const web3 = new Web3('ws://127.0.0.1:8545')
+const web3 = new Web3('ws://127.0.0.1:8546')
 
 const fs = require('fs')
 const dns = require('dns')
@@ -46,44 +46,21 @@ let account_flag = false
 let open_resolver_flag = false
 
 
-const tokens = Math.floor(Math.random() * 10000)
+
 web3.eth.getAccounts()
 .then((value) => {
 	web3.eth.defaultAccount = value[account_index]
 	console.log('the default account is account' + account_index + ':', web3.eth.defaultAccount)
-	domain_token_contract.methods.supplyDomainTokens(tokens).send({
-		from: web3.eth.defaultAccount,
-		gas: 3000000
-	})
-	.on('receipt', receipt => {
-		domain_token_contract.methods.approve(ddns_contract_address, tokens).send({
-			from: web3.eth.defaultAccount,
-			gas: 3000000
-		})
-		.on('receipt', receipt => {
-			ddns_contract.methods.sendStakes(tokens).send({
-				from: web3.eth.defaultAccount,
-				gas: 3000000
-			})
-			.on('receipt', receipt => {
-				console.log('stakes: ', tokens)
-				account_flag = true
-			})
-			.on('error', error => {
-				console.log('Cannot send stake', err)
-				process.exit()
-			})
-		})
-		.on('error', receipt => {
-			console.log('Approve token error')
-			process.exit()
-		})
-	})
-	.on('error', error => {
-		console.log('Supply token error')
-		process.exit()
-	})
-
+	return ddns_contract.methods.stakes(web3.eth.defaultAccount).call()
+})
+.then((stakes) => {
+	if (stakes == 0) {
+		init_stakes(web3.eth.defaultAccount)
+	}
+	else {
+		console.log('stakes: ', stakes)
+		account_flag = true
+	}
 })
 .catch((err) => {
 	console.log('Cannot get accounts', err)
@@ -93,49 +70,44 @@ web3.eth.getAccounts()
 
 
 
-// web3.eth.getAccounts()
-// .then((value) => {
-// 	web3.eth.defaultAccount = value[account_index]
-// 	console.log('the default account is account' + account_index + ':', web3.eth.defaultAccount)
-
-// 	console.log('supplying tokens')
-// 	domain_token_contract.methods.supplyDomainTokens(tokens).send({
-// 		from: web3.eth.defaultAccount,
-// 		gas: 3000000
-// 	})
-// 	.then(() => {
-// 		console.log('approving tokens')
-// 		domain_token_contract.methods.approve(ddns_contract_address, tokens).send({
-// 			from: web3.eth.defaultAccount,
-// 			gas: 3000000
-// 		})
-// 		.then(() => {
-// 			console.log('sending tokens')
-// 			ddns_contract.methods.sendStakes(tokens).send({
-// 				from: web3.eth.defaultAccount,
-// 				gas: 3000000
-// 			})
-// 			.then(() => {
-// 				console.log('stakes: ', tokens)
-// 				account_flag = true
-// 			})
-// 			.catch((err) => {
-// 				console.log('Cannot send stake', err)
-// 			})
-// 		})
-// 		.catch((err) => {
-// 			console.log('Cannot approve stake', err)
-// 		})
-// 	})
-// 	.catch((err) => {
-// 		console.log('Cannot supply stake', err)
-// 	})
-// })
-// .catch((err) => {
-// 	console.log('Cannot get accounts', err)
-// })
-
-
+function init_stakes(voter) {
+	let tokens = Math.floor(Math.random() * 10000)
+	console.log('supplying tokens')
+	domain_token_contract.methods.supplyDomainTokens(tokens).send({
+		from: voter,
+		gas: 3000000
+	})
+	.on('receipt', receipt => {
+		console.log('approving tokens')
+		domain_token_contract.methods.approve(ddns_contract_address, tokens).send({
+			from: voter,
+			gas: 3000000
+		})
+		.on('receipt', receipt => {
+			console.log('sending tokens')
+			ddns_contract.methods.sendStakes(tokens).send({
+				from: voter,
+				gas: 3000000
+			})
+			.on('receipt', receipt => {
+				console.log('stakes: ', tokens)
+				account_flag = true
+			})
+			.on('error', error => {
+				console.log('Cannot send stake', error)
+				process.exit()
+			})
+		})
+		.on('error', receipt => {
+			console.log('Approve token error', error)
+			process.exit()
+		})
+	})
+	.on('error', error => {
+		console.log('Supply token error', error)
+		process.exit()
+	})
+}
 
 
 
@@ -222,7 +194,7 @@ function self_selection(hash, voting_args, stake) {
 	if(keys.length > 0) {
 		voting_logs.is_committee = true
 	}
-	else{
+	else {
 		voting_logs.is_committee = false
 	}
 	
@@ -288,14 +260,13 @@ function vote(hash, keys, records) {
 		voting_logs[hash].votes = records
 		voting_logs[hash].block_number = receipt.blockNumber
 		voting_logs[hash].gas_used = web3.utils.toBN(receipt.gasUsed).toString()
-	})
-	.then(() => {})
-	.catch((error) => {
-		voting_logs[hash].error_msg = JSON.parse(error.message.substr(12, error.message.length)).message
-	})
-	.then(() => {
 		console.log(voting_logs[hash])
 	})
+	.catch((error) => {
+		voting_logs[hash].error_msg = error
+		console.log(voting_logs[hash])
+	})
+
 }
 
 

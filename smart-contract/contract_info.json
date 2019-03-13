@@ -293,7 +293,7 @@
 			"signature": "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925"
 		}
 	],
-	"domain_token_contract_address": "0xded7130e0413f862e48800780b37aba79013b5b2",
+	"domain_token_contract_address": "0x3d8eaf0758580f8df3416132a497e773c0cdf9e3",
 	"ddns_contract_abi": [
 		{
 			"constant": false,
@@ -344,7 +344,7 @@
 					"type": "bytes"
 				},
 				{
-					"name": "_cost",
+					"name": "_offer",
 					"type": "uint256"
 				}
 			],
@@ -355,6 +355,30 @@
 			"type": "function",
 			"funcName": "request(uint8,bytes,uint256)",
 			"signature": "0x19ac9f70"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
+					"name": "_hash",
+					"type": "bytes32"
+				},
+				{
+					"name": "_keys",
+					"type": "uint256[]"
+				},
+				{
+					"name": "_pubKey",
+					"type": "bytes"
+				}
+			],
+			"name": "vote",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "vote(bytes32,uint256[],bytes)",
+			"signature": "0x36b27a58"
 		},
 		{
 			"constant": false,
@@ -477,7 +501,7 @@
 					"type": "bytes"
 				},
 				{
-					"name": "cost",
+					"name": "offer",
 					"type": "uint256"
 				},
 				{
@@ -559,6 +583,30 @@
 			"constant": false,
 			"inputs": [
 				{
+					"name": "_hash",
+					"type": "bytes32"
+				},
+				{
+					"name": "_keys",
+					"type": "uint256[]"
+				},
+				{
+					"name": "_ips",
+					"type": "bytes32[]"
+				}
+			],
+			"name": "voteForIP",
+			"outputs": [],
+			"payable": false,
+			"stateMutability": "nonpayable",
+			"type": "function",
+			"funcName": "voteForIP(bytes32,uint256[],bytes32[])",
+			"signature": "0xa48445bc"
+		},
+		{
+			"constant": false,
+			"inputs": [
+				{
 					"name": "_domain",
 					"type": "bytes"
 				},
@@ -574,30 +622,6 @@
 			"type": "function",
 			"funcName": "transfer(bytes,address)",
 			"signature": "0xbba1b1cd"
-		},
-		{
-			"constant": false,
-			"inputs": [
-				{
-					"name": "_hash",
-					"type": "bytes32"
-				},
-				{
-					"name": "_keys",
-					"type": "uint256[]"
-				},
-				{
-					"name": "_candidates",
-					"type": "bytes32[]"
-				}
-			],
-			"name": "vote",
-			"outputs": [],
-			"payable": false,
-			"stateMutability": "nonpayable",
-			"type": "function",
-			"funcName": "vote(bytes32,uint256[],bytes32[])",
-			"signature": "0xbba1cad4"
 		},
 		{
 			"constant": true,
@@ -641,10 +665,72 @@
 			"signature": "0xe2506dae"
 		},
 		{
+			"constant": true,
+			"inputs": [
+				{
+					"name": "pubKey",
+					"type": "bytes"
+				}
+			],
+			"name": "pubkeyToAddress",
+			"outputs": [
+				{
+					"name": "",
+					"type": "address"
+				}
+			],
+			"payable": false,
+			"stateMutability": "view",
+			"type": "function",
+			"funcName": "pubkeyToAddress(bytes)",
+			"signature": "0xf85d3896"
+		},
+		{
+			"constant": true,
+			"inputs": [
+				{
+					"name": "hash",
+					"type": "bytes32"
+				},
+				{
+					"name": "v",
+					"type": "uint8"
+				},
+				{
+					"name": "r",
+					"type": "bytes32"
+				},
+				{
+					"name": "s",
+					"type": "bytes32"
+				}
+			],
+			"name": "getSigner",
+			"outputs": [
+				{
+					"name": "",
+					"type": "address"
+				}
+			],
+			"payable": false,
+			"stateMutability": "pure",
+			"type": "function",
+			"funcName": "getSigner(bytes32,uint8,bytes32,bytes32)",
+			"signature": "0xf96ddf7a"
+		},
+		{
 			"inputs": [
 				{
 					"name": "_tokenContractAddr",
 					"type": "address"
+				},
+				{
+					"name": "_committeeSize",
+					"type": "uint16"
+				},
+				{
+					"name": "_committeeThreshold",
+					"type": "uint16"
 				}
 			],
 			"payable": false,
@@ -673,6 +759,54 @@
 					"indexed": false,
 					"name": "hash",
 					"type": "bytes32"
+				},
+				{
+					"indexed": false,
+					"name": "weight",
+					"type": "uint96"
+				},
+				{
+					"indexed": false,
+					"name": "ips",
+					"type": "bytes32[]"
+				}
+			],
+			"name": "NewVoteForIP",
+			"type": "event",
+			"funcName": "NewVoteForIP(bytes32,uint96,bytes32[])",
+			"signature": "0x8fa9b1304a1d18004ae3ea538ae8f6cb79df2a944024ab8a25ddd5571cccd79d"
+		},
+		{
+			"anonymous": false,
+			"inputs": [
+				{
+					"indexed": false,
+					"name": "hash",
+					"type": "bytes32"
+				},
+				{
+					"indexed": false,
+					"name": "weight",
+					"type": "uint96"
+				},
+				{
+					"indexed": false,
+					"name": "verified",
+					"type": "bool"
+				}
+			],
+			"name": "NewVote",
+			"type": "event",
+			"funcName": "NewVote(bytes32,uint96,bool)",
+			"signature": "0x79504540253afbb356ebaa7ecf45fa4955a9c06765fce0070d2f8feddb872749"
+		},
+		{
+			"anonymous": false,
+			"inputs": [
+				{
+					"indexed": false,
+					"name": "hash",
+					"type": "bytes32"
 				}
 			],
 			"name": "VoteComplete",
@@ -681,5 +815,5 @@
 			"signature": "0x7c9c351205acf2550c42b76306b6c7a029107b0eface10848907299b6396455d"
 		}
 	],
-	"ddns_contract_address": "0xf438d54fe504b7e22172023d4be5ef2960c6976e"
+	"ddns_contract_address": "0x74b62f6d81117b84448ec8d7e6281db170ebaca7"
 }

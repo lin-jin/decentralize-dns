@@ -7,12 +7,14 @@ contract DDNS{
     address tokenContractAddr;
     DomainToken token;
     
-    enum Stage {Init, Vote, Done}
+    enum Stage {Init, Commit, Vote, Done}
     enum Type {None, IP, Ownership}
     enum Mode {None, Claim, Secure}
     
     
     event NewRequest (bytes32 hash);
+    event NewCommit (bytes32 hash, address committer);
+    event VoteBegin (bytes32 hash);
     event NewVoteForIP (bytes32 hash, uint96 weight, bytes32[] ips);
     event NewVote (bytes32 hash, uint96 weight, bool verified);
     event VoteComplete (bytes32 hash);
@@ -28,6 +30,13 @@ contract DDNS{
         bytes32 request;
     }
     
+    struct Voter {
+        bytes20 commitment;
+        uint16 weight;
+        bool verified;
+        bool fulfilled;
+        bool redeemed;
+    }
     
     struct Voting {
         uint256 timestamp;
@@ -36,14 +45,21 @@ contract DDNS{
         bytes domain;
         uint256 offer;
         uint256 totalStake;
+        // int256 result;
         Stage stage;
-        uint256 votingWeight;
-        int256 result;
+        uint16 commitWeight;
+        uint16 posVotingWeight;
+        uint16 negVotingWeight;
+        
         bytes32[] candidates;
         mapping (bytes32 => uint256) votes;
-        address[] committees;
-        mapping (address => uint256) weights;
-        mapping (address => bool) redeemed;
+        
+        mapping (bytes20 => bool) committed;
+        mapping (address => Voter) voters;
+        // address[] committees;
+        // mapping (address => bytes32) commitments;
+        // mapping (address => uint256) weights;
+        // mapping (address => bool) redeemed;
     }
 
 
@@ -57,6 +73,7 @@ contract DDNS{
     
     uint16 public committeeSize;
     uint16 public committeeThreshold;
+    uint16 public maxVoteTime;
     
     
     constructor (address _tokenContractAddr, uint16 _committeeSize, uint16 _committeeThreshold) public {
@@ -64,6 +81,7 @@ contract DDNS{
         token = DomainToken(tokenContractAddr);
         committeeSize = _committeeSize;
         committeeThreshold = _committeeThreshold;
+        maxVoteTime = 18000; // 5 hours
     }
     
     
@@ -93,9 +111,10 @@ contract DDNS{
     function redeem (bytes32 [] memory _voting) public returns (uint256) {
         uint256 totalRedeemed = 0;
         for (uint i = 0; i< _voting.length; i++) {
-            if(votingTable[_voting[i]].redeemed[msg.sender] == false) {
-                totalRedeemed += votingTable[_voting[i]].weights[msg.sender] * votingTable[_voting[i]].offer / votingTable[_voting[i]].votingWeight;
-                votingTable[_voting[i]].redeemed[msg.sender] = true;
+            if(votingTable[_voting[i]].voters[msg.sender].redeemed == false) {
+                uint16 weight = votingTable[_voting[i]].posVotingWeight > votingTable[_voting[i]].negVotingWeight ? votingTable[_voting[i]].posVotingWeight : votingTable[_voting[i]].negVotingWeight;
+                totalRedeemed += votingTable[_voting[i]].voters[msg.sender].weight * votingTable[_voting[i]].offer / weight;
+                votingTable[_voting[i]].voters[msg.sender].redeemed = true;
             }
         }
         
@@ -125,15 +144,15 @@ contract DDNS{
         votingTable[hash].timestamp = block.timestamp;
         votingTable[hash].domain = _domain;
         votingTable[hash].offer = _offer;
-        votingTable[hash].stage = Stage.Vote;
+        votingTable[hash].stage = Stage.Commit;
         votingTable[hash].totalStake = totalStake;
         
         emit NewRequest(hash);
     }
     
     
-    function getWeight (bytes32 _hash, uint256[] memory _keys) private view returns (uint96) {
-        uint96 weight = 0;
+    function getWeight (bytes32 _hash, uint256[] memory _keys) private view returns (uint16) {
+        uint16 weight = 0;
         bool dup;
         
         for (uint256 i = 0; i < _keys.length; i++) {
@@ -157,42 +176,58 @@ contract DDNS{
     
     
     
-    modifier eligibleVote (bytes32 _hash, Type _type) {
-        require(votingTable[_hash].requestType == _type, 'Using wrong vote function');
-        require(votingTable[_hash].stage == Stage.Vote, 'This voting is not in voting stage');
+    modifier eligibleVoter (bytes32 _hash) {
+        // require(votingTable[_hash].requestType == _type, 'Using wrong vote function');
+        require(votingTable[_hash].stage == Stage.Commit, 'This voting is not in voting stage');
         require(block.timestamp > lastChange[msg.sender], 'Stake has changed since the vote begins, not allow to vote');
-        require(votingTable[_hash].weights[msg.sender] == 0, 'Duplicate Vote');
+        require(votingTable[_hash].voters[msg.sender].weight == 0, 'Duplicate Vote');
         _;
     }
     
     
-    function addVoter (bytes32 _hash, uint96 weight) private {
-        // bytes memory committee = abi.encodePacked(bytes20(msg.sender), weight);
-        votingTable[_hash].weights[msg.sender] = weight;
-        votingTable[_hash].committees.push(msg.sender);
-        votingTable[_hash].votingWeight += weight;
+    
+    
+    function commit (bytes32 _hash, uint256[] memory _keys, bytes20 _commitment) eligibleVoter (_hash) public {
+        require(!votingTable[_hash].committed[_commitment], 'duplicate commitment');
+        uint16 weight = getWeight(_hash, _keys);
+        require(weight > 0, 'Voter is not in the committee');
+        
+        votingTable[_hash].voters[msg.sender].commitment = _commitment;
+        votingTable[_hash].voters[msg.sender].weight = weight;
+        votingTable[_hash].commitWeight += weight;
+        
+        votingTable[_hash].committed[_commitment] = true;
+        emit NewCommit (_hash, msg.sender);
+        
+        if (votingTable[_hash].commitWeight > committeeThreshold) {
+            votingTable[_hash].stage = Stage.Vote;
+            emit VoteBegin (_hash);
+        }
+        
     }
     
     
     
-    function vote (bytes32 _hash, uint256[] memory _keys, bytes memory _pubKey) eligibleVote (_hash, Type.Ownership) public {
-        uint96 weight = getWeight(_hash, _keys);
-        require(weight > 0, 'Voter is not in the committee');
-        
-        // bool verified = getSigner(_msg, _v, _r, _s) == votingTable[_hash].sender;
-        bool verified = pubkeyToAddress(_pubKey) == votingTable[_hash].sender;
+    
+    function vote (bytes32 _hash, uint8 _v, bytes32 _r, bytes32 _s, bytes32 _nounce) public {
+        require(votingTable[_hash].stage == Stage.Vote, 'Voting not in the Vote stage');
+        require(bytes20(keccak256(abi.encodePacked(_v, _r, _s, _nounce))) == votingTable[_hash].voters[msg.sender].commitment, 'Not valid committer');
+        uint16 weight = votingTable[_hash].voters[msg.sender].weight;
+        bool verified = getSigner(dnsTable[votingTable[_hash].domain].lastVote, _v, _r, _s) == votingTable[_hash].sender;
+        // bool verified = pubkeyToAddress(_pubKey) == votingTable[_hash].sender;
         
         if (verified) {
-            votingTable[_hash].result += int96(weight);
+            votingTable[_hash].posVotingWeight += weight;
         }
         else {
-            votingTable[_hash].result -= int96(weight);
+            votingTable[_hash].negVotingWeight -= weight;
         }
-
-        addVoter(_hash, weight);
+        
+        votingTable[_hash].voters[msg.sender].fulfilled = true;
+        votingTable[_hash].voters[msg.sender].verified = verified;
         emit NewVote(_hash, weight, verified);
         
-        if (votingTable[_hash].votingWeight > committeeThreshold) {
+        if (votingTable[_hash].posVotingWeight + votingTable[_hash].negVotingWeight == votingTable[_hash].commitWeight || block.timestamp - votingTable[_hash].timestamp > maxVoteTime) {
             votingTable[_hash].stage = Stage.Done;
             voteComplete(_hash);
         }
@@ -200,38 +235,37 @@ contract DDNS{
     
     
     
-    function voteForIP (bytes32 _hash, uint256[] memory _keys, bytes32[] memory _ips) eligibleVote (_hash, Type.IP) public {
-        uint96 weight = getWeight(_hash, _keys);
-        require(weight > 0, 'Voter is not in the committee');
+    // function voteForIP (bytes32 _hash, uint256[] memory _keys, bytes32[] memory _ips) eligibleVoter (_hash) public {
+    //     uint96 weight = getWeight(_hash, _keys);
+    //     require(weight > 0, 'Voter is not in the committee');
         
-        for (uint8 i = 0; i < _ips.length; i++) {
-            bool dup = false;
-            for (uint8 j = i + 1; j < _ips.length; j++) {
-                if (_ips[i] == _ips[j]) {
-                    dup = true;
-                }
-            }
-            if (!dup) {
-                if (votingTable[_hash].votes[_ips[i]] == 0) {
-                    votingTable[_hash].candidates.push(_ips[i]);
-                }
-                votingTable[_hash].votes[_ips[i]] += weight;
-            }
-        }
+    //     for (uint8 i = 0; i < _ips.length; i++) {
+    //         bool dup = false;
+    //         for (uint8 j = i + 1; j < _ips.length; j++) {
+    //             if (_ips[i] == _ips[j]) {
+    //                 dup = true;
+    //             }
+    //         }
+    //         if (!dup) {
+    //             if (votingTable[_hash].votes[_ips[i]] == 0) {
+    //                 votingTable[_hash].candidates.push(_ips[i]);
+    //             }
+    //             votingTable[_hash].votes[_ips[i]] += weight;
+    //         }
+    //     }
         
-        addVoter(_hash, weight);
-        emit NewVoteForIP(_hash, weight, _ips);
+    //     emit NewVoteForIP(_hash, weight, _ips);
         
-        if (votingTable[_hash].votingWeight > committeeThreshold) {
-            votingTable[_hash].stage = Stage.Done;
-            voteComplete(_hash);
-        }
-    }
+    //     if (votingTable[_hash].votingWeight > committeeThreshold) {
+    //         votingTable[_hash].stage = Stage.Done;
+    //         voteComplete(_hash);
+    //     }
+    // }
     
     
     
     function voteComplete (bytes32 _hash) private {
-        if (votingTable[_hash].requestType == Type.Ownership && votingTable[_hash].result > 0) {
+        if (votingTable[_hash].requestType == Type.Ownership && votingTable[_hash].posVotingWeight > votingTable[_hash].negVotingWeight) {
             bytes memory domain = votingTable[_hash].domain;
             
             if (dnsTable[domain].mode == Mode.Claim) {
@@ -314,26 +348,26 @@ contract DDNS{
     }
     
     
-
-    function pubkeyToAddress(bytes memory pubKey) public view returns (address) {
-        bytes20 addr;
-        bytes32 hash = keccak256(abi.encodePacked(pubKey));
-        assembly {
-            let ptr := mload(0x40)
-            mstore(add(ptr,0x00), hash)
-            addr := mload(add(ptr,0x0c))
-        }
-        
-        return address(addr);
-    }
     
-    
-    
-    function getSigner(bytes32 hash, uint8 v, bytes32 r, bytes32 s) public pure returns (address) {
+    function getSigner(uint256 msg, uint8 v, bytes32 r, bytes32 s) public pure returns (address) {
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        bytes32 prefixedHash = keccak256(abi.encodePacked(prefix, hash));
+        bytes32 prefixedHash = keccak256(abi.encodePacked(prefix, msg));
         return ecrecover(prefixedHash, v, r, s);
     }
+    
+    
+    // function pubkeyToAddress(bytes memory pubKey) public view returns (address) {
+    //     bytes20 addr;
+    //     bytes32 hash = keccak256(abi.encodePacked(pubKey));
+    //     assembly {
+    //         let ptr := mload(0x40)
+    //         mstore(add(ptr,0x00), hash)
+    //         addr := mload(add(ptr,0x0c))
+    //     }
+        
+    //     return address(addr);
+    // }
+    
     
     
     // function bytesToBytes32(bytes memory input) private pure returns (bytes32) {
@@ -358,14 +392,7 @@ contract DDNS{
     //     return (address(part1), uint96(part2));
     // }
     
-    // function getWeights (bytes32 _hash) view public returns (uint256 _weight) {
-    //     return votingTable[_hash].weights[msg.sender];
-    // }
-    
-    
-    // function getVotes (bytes32 _hash, bytes15 _candidate) view public returns (uint256 _vote) {
-    //     return votingTable[_hash].votes[_candidate];
-    // }
+
 }
 
 

@@ -9,20 +9,21 @@ contract DDNS{
     
     enum Stage {Init, Commit, Vote, Done}
     enum Type {None, IP, Ownership}
-    enum Mode {None, Claim, Secure}
+    enum Mode {None, Challenge, Secure}
     
     
     event NewRequest (bytes32 hash);
-    event NewCommit (bytes32 hash, address committer);
+    event NewCommit (bytes32 hash, uint16 weight);
     event VoteBegin (bytes32 hash);
-    event NewVoteForIP (bytes32 hash, uint96 weight, bytes32[] ips);
-    event NewVote (bytes32 hash, uint96 weight, bool verified);
+    event NewVoteForIP (bytes32 hash, bytes32[] ips);
+    event NewVote (bytes32 hash, bool verified);
     event VoteComplete (bytes32 hash);
 
     
     struct Record {
         address owner;
         address agent;
+        address challenger;
         uint256 lastVote;
         Mode mode;
         bytes record;
@@ -45,21 +46,15 @@ contract DDNS{
         bytes domain;
         uint256 offer;
         uint256 totalStake;
-        // int256 result;
         Stage stage;
         uint16 commitWeight;
         uint16 posVotingWeight;
         uint16 negVotingWeight;
+        mapping (bytes20 => bool) committed;
+        mapping (address => Voter) voters;
         
         bytes32[] candidates;
         mapping (bytes32 => uint256) votes;
-        
-        mapping (bytes20 => bool) committed;
-        mapping (address => Voter) voters;
-        // address[] committees;
-        // mapping (address => bytes32) commitments;
-        // mapping (address => uint256) weights;
-        // mapping (address => bool) redeemed;
     }
 
 
@@ -197,7 +192,7 @@ contract DDNS{
         votingTable[_hash].commitWeight += weight;
         
         votingTable[_hash].committed[_commitment] = true;
-        emit NewCommit (_hash, msg.sender);
+        emit NewCommit (_hash, weight);
         
         if (votingTable[_hash].commitWeight > committeeThreshold) {
             votingTable[_hash].stage = Stage.Vote;
@@ -220,12 +215,12 @@ contract DDNS{
             votingTable[_hash].posVotingWeight += weight;
         }
         else {
-            votingTable[_hash].negVotingWeight -= weight;
+            votingTable[_hash].negVotingWeight += weight;
         }
         
         votingTable[_hash].voters[msg.sender].fulfilled = true;
         votingTable[_hash].voters[msg.sender].verified = verified;
-        emit NewVote(_hash, weight, verified);
+        emit NewVote(_hash, verified);
         
         if (votingTable[_hash].posVotingWeight + votingTable[_hash].negVotingWeight == votingTable[_hash].commitWeight || block.timestamp - votingTable[_hash].timestamp > maxVoteTime) {
             votingTable[_hash].stage = Stage.Done;
@@ -254,7 +249,7 @@ contract DDNS{
     //         }
     //     }
         
-    //     emit NewVoteForIP(_hash, weight, _ips);
+    //     emit NewVoteForIP(_hash, _ips);
         
     //     if (votingTable[_hash].votingWeight > committeeThreshold) {
     //         votingTable[_hash].stage = Stage.Done;
@@ -267,18 +262,37 @@ contract DDNS{
     function voteComplete (bytes32 _hash) private {
         if (votingTable[_hash].requestType == Type.Ownership && votingTable[_hash].posVotingWeight > votingTable[_hash].negVotingWeight) {
             bytes memory domain = votingTable[_hash].domain;
+            dnsTable[domain].lastVote = votingTable[_hash].timestamp;
             
-            if (dnsTable[domain].mode == Mode.Claim) {
-                dnsTable[domain].owner = msg.sender;
-                dnsTable[domain].mode = Mode.Secure;
-                dnsTable[domain].lastVote = votingTable[_hash].timestamp;
+            if (dnsTable[domain].mode == Mode.Challenge) {
+                if (votingTable[_hash].sender == dnsTable[domain].owner) {
+                    dnsTable[domain].mode = Mode.Secure;
+                    dnsTable[domain].challenger = address(0x00);
+                }
+                else if (votingTable[_hash].sender == dnsTable[domain].challenger) {
+                    dnsTable[domain].mode = Mode.Secure;
+                    dnsTable[domain].owner = votingTable[_hash].sender;
+                    dnsTable[domain].challenger = address(0x00);
+                }
+                else {
+                    dnsTable[domain].challenger == votingTable[_hash].sender;
+                }
+                
             }
-            else if (dnsTable[domain].owner != msg.sender) {
-                dnsTable[domain].mode = Mode.Claim;
+            else if (dnsTable[domain].mode == Mode.Secure) {
+                if (votingTable[_hash].sender != dnsTable[domain].owner) {
+                    dnsTable[domain].mode = Mode.Challenge;
+                    dnsTable[domain].challenger = votingTable[_hash].sender;
+                }
+                else {
+                    // pass
+                }
             }
             else {
-                dnsTable[domain].lastVote = votingTable[_hash].timestamp;
+                dnsTable[domain].mode = Mode.Challenge;
+                dnsTable[domain].challenger = votingTable[_hash].sender;
             }
+
         }
         emit VoteComplete(_hash);
     }

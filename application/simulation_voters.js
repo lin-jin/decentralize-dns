@@ -45,12 +45,14 @@ web3.eth.getAccounts()
 	addresses.forEach((address, index) => {
 		ddns_contract.methods.stakes(address).call()
 		.then((stakes) => {
+			// let index = Math.floor(Math.random() * open_resolvers.length)
 			if (stakes == 0) {
 				init_stakes(address, index)
 			}
 			else {
 				voter = {address: address, open_resolver: open_resolvers[index].trim().split('***')[0].trim()}
 				voters.push(voter)
+				console.log('initilized voter number', voters.length)
 			}
 		})
 	})
@@ -84,6 +86,7 @@ function init_stakes(address, index) {
 	.then(() => {
 		voter = {address: address, open_resolver: open_resolvers[index].trim().split('***')[0].trim()}
 		voters.push(voter)
+		console.log('initilized voter number', voters.length)
 	})
 	.catch('error', error => {
 		console.log('init stake error', address)
@@ -132,8 +135,8 @@ async function handle_request(event, voter) {
 			console.log('Request type is wrong!!!')
 		}
 		if (voting_args.requestType == 2) {
-			console.log('voter:',voter)
-			console.log('keys:', keys)
+			// console.log('voter:',voter)
+			// console.log('keys:', keys)
 			handle_ownership_request(hash, voting_args, keys, voter)
 		}
 	}
@@ -178,7 +181,6 @@ function handle_ownership_request(hash, voting_args, keys, voter) {
 		vote_info[voter.address] = {}
 	}
 
-
 	resolver.resolveTxt(domain)
 	.then((records) => {
 		let sig = records[0][0]
@@ -189,18 +191,13 @@ function handle_ownership_request(hash, voting_args, keys, voter) {
 			v = web3.utils.toDecimal('0x' + sig.slice(130, 132)) + 27
 		}
 		commitment = web3.utils.soliditySha3({type: 'uint8', value: v},r,s,nounce).slice(0,42)
+		
+		vote_info[voter.address][hash] = {v: v, r: r, s: s, nounce: nounce, commitment: commitment}
 		commit(hash, keys, commitment, voter)
-
-		vote_info[voter.address][hash] = {v: v, r: r, s: s, nounce: nounce}
-
-		console.log('commitment:', commitment)
-		console.log('info:', {v: v, r: r, s: s, nounce: nounce})
-
 	})
 	.catch((err) => {
+		vote_info[voter.address][hash] = {v: v, r: r, s: s, nounce: nounce, commitment: commitment}
 		commit(hash, keys, commitment, voter)
-		vote_info[voter.address][hash] = {v: v, r: r, s: s, nounce: nounce}
-		// console.log('retrive TXT record error', err)
 	})
 }
 
@@ -212,7 +209,12 @@ function commit(hash, keys, commitment, voter) {
 		gas: 3000000
 	})
 	.catch((error) => {
-		console.log(voter.address, 'commit error', error)
+		try {
+			console.log(voter.address, 'Commit Error', JSON.parse(error.message.substr(12, error.message.length)).message)
+		}
+		catch(err) {
+			console.log(voter.address, 'Commit Error', error)
+		}
 	})
 }
 // function handle_ownership_request(hash, voting_args, keys, voter) {
@@ -275,14 +277,18 @@ ddns_contract.events.VoteBegin({
 function handle_vote_begin(event, voter) {
 	let hash = event.returnValues.hash
 
-	if (vote_info[voter.address][hash] != undefined) {
-		let v = vote_info[voter.address][hash].v
-		let r = vote_info[voter.address][hash].r
-		let s = vote_info[voter.address][hash].s
-		let nounce = vote_info[voter.address][hash].nounce
-		vote(hash, v, r, s, nounce, voter)
-		console.log('voted!!!')
+	if(vote_info[voter.address] != undefined) {
+		if (vote_info[voter.address][hash] != undefined) {
+			ddns_contract.methods
+
+			let v = vote_info[voter.address][hash].v
+			let r = vote_info[voter.address][hash].r
+			let s = vote_info[voter.address][hash].s
+			let nounce = vote_info[voter.address][hash].nounce
+			vote(hash, v, r, s, nounce, voter)
+		}
 	}
+
 }
 
 
@@ -294,12 +300,13 @@ function vote(hash, v, r, s, nounce, voter) {
 		from: voter.address,
 		gas:3000000
 	})
-	// .on('receipt', receipt => {
-	// 	console.log(receipt)
-	// })
 	.catch((error) => {
-		// console.log(voter.address, 'Error', JSON.parse(error.message.substr(12, error.message.length)).message)
-		console.log(voter.address, 'Error', error)
+		try {
+			console.log(voter.address, 'Vote Error', JSON.parse(error.message.substr(12, error.message.length)).message)
+		}
+		catch(err) {
+			console.log(voter.address, 'Vote Error', error)
+		}
 	})
 }
 

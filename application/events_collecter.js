@@ -42,30 +42,75 @@ ddns_contract.getPastEvents('NewRequest', {
 	})
 })
 .then(() => {
-	// let blocks = Array.from(new Array(end_block - start_block + 1), (x,i) => i + start_block)
 	let block = start_block
+	console.log('start block', start_block)
+	console.log('end block', end_block)
+
 	var timer = setInterval(() => {
 		
-		ddns_contract.getPastEvents('NewVote', {
+		ddns_contract.getPastEvents('allEvents', {
 			fromBlock: block, toBlock: block
 		})
 		.then((events) => {
 			if(events.length > 0) {
 				events.forEach((event) => {
-					log_new_vote(event)
+					if (event.event == 'NewCommit') {
+						log_new_commit(event)
+						// console.log(event.event, events[0].blockNumber)
+					}
+					if (event.event == 'NewVote') {
+						log_new_vote(event)
+						// console.log(event.event, events[0].blockNumber)
+					}
+					
 				})
-				console.log('finished block', events[0].blockNumber)
+				
 				if(events[0].blockNumber == end_block) {
-					export_voting_logs()
+					clearInterval(timer)
+					
+					setTimeout(() => {
+						export_voting_logs()
+					}, 2000) 
 				}
 			}
+
 		})
 		block += 1
-		if(block > end_block) {
-			clearInterval(timer)
-		}
-	}, 1000)
+	}, 100)
 })
+
+
+
+
+
+// function get_vote_log() {
+// 	// let blocks = Array.from(new Array(end_block - start_block + 1), (x,i) => i + start_block)
+	
+	
+// 	let block = start_block
+// 	var timer = setInterval(() => {
+		
+// 		ddns_contract.getPastEvents('NewVote', {
+// 			fromBlock: block, toBlock: block
+// 		})
+// 		.then((events) => {
+// 			if(events.length > 0) {
+// 				events.forEach((event) => {
+// 					log_new_vote(event)
+// 				})
+// 				console.log('NewVote finished block', events[0].blockNumber)
+// 				if(events[0].blockNumber == end_block) {
+// 					clearInterval(timer)
+						
+// 					setTimeout(() => {
+// 						export_voting_logs()
+// 					}, 2000) 
+// 				}
+// 			}
+// 		})
+// 		block += 1
+// 	}, 100)
+// }
 
 
 
@@ -74,7 +119,7 @@ ddns_contract.getPastEvents('NewRequest', {
 function log_new_request(event) {
 	let hash = event.returnValues.hash
 	voting_logs[hash] = {}
-	voting_logs[hash].voter = []
+	voting_logs[hash].voter = {}
 	ddns_contract.methods.votingTable(hash).call()
 	.then((voting_args) => {
 		voting_logs[hash].request_type = (voting_args.requestType == '1') ? 'ip' : 'ownership'
@@ -98,35 +143,107 @@ function log_new_request(event) {
 }
 
 
-function log_new_vote(event) {
+
+function log_new_commit(event) {
 	let hash = event.returnValues.hash
-	let voter = {}
-	voter.weight = web3.utils.toBN(event.returnValues.weight).toString()
-	voter.verified = event.returnValues.verified
-	web3.eth.getBlock(event.blockHash)
-	.then((block) => {
-		voter.timestamp = block.timestamp
-		voter.block_number = block.number
-		return web3.eth.getTransaction(event.transactionHash)
-	})
+	let voter_address
+
+	web3.eth.getTransaction(event.transactionHash)
 	.then((tx) => {
-		voter.address = tx.from
+		voter_address = tx.from
+		voting_logs[hash].voter[voter_address] = {}
+		voting_logs[hash].voter[voter_address].weight = web3.utils.toBN(event.returnValues.weight).toString()
 		return web3.eth.getTransactionReceipt(event.transactionHash)
 	})
 	.then((receipt) => {
-		voter.gas = web3.utils.toBN(receipt.gasUsed).toString()
-		return ddns_contract.methods.stakes(voter.address).call()
+		voting_logs[hash].voter[voter_address].commit_gas = web3.utils.toBN(receipt.gasUsed).toString()
+		return web3.eth.getBlock(event.blockHash)
+	})
+	.then((block) => {
+		voting_logs[hash].voter[voter_address].commit_timestamp = block.timestamp
+		voting_logs[hash].voter[voter_address].commit_block_number = block.number
+		return ddns_contract.methods.stakes(voter_address).call()
 	})
 	.then((stake) => {
-		voter.stake = stake
-		voting_logs[hash].voter.push(voter)
-		// export_voting_logs()
+		voting_logs[hash].voter[voter_address].stake = stake
+	})
+	.catch((err) => {
+		console.log('log_new_commit error', err)
+	})
+
+
+
+	// web3.eth.getBlock(event.blockHash)
+	// .then((block) => {
+	// 	voter.commit_timestamp = block.timestamp
+	// 	voter.commit_block_number = block.number
+	// 	return web3.eth.getTransaction(event.transactionHash)
+	// })
+	// .then((tx) => {
+	// 	voter_address = tx.from
+	// 	return web3.eth.getTransactionReceipt(event.transactionHash)
+	// })
+	// .then((receipt) => {
+	// 	voter.commit_gas = web3.utils.toBN(receipt.gasUsed).toString()
+	// 	return ddns_contract.methods.stakes(voter.address).call()
+	// })
+	// .then((stake) => {
+	// 	voter.stake = stake
+	// 	voting_logs[hash].voter[voter_address] = voter
+	// })
+	// .catch((err) => {
+	// 	console.log('log_new_commit error', err)
+	// })
+}
+
+
+function log_new_vote(event) {
+	let hash = event.returnValues.hash
+	let voter_address
+	
+	web3.eth.getTransaction(event.transactionHash)
+	.then((tx) => {
+		voter_address = tx.from
+		
+		voting_logs[hash].voter[voter_address].verified = event.returnValues.verified
+		return web3.eth.getTransactionReceipt(event.transactionHash)
+	})
+	.then((receipt) => {
+		voting_logs[hash].voter[voter_address].vote_gas = web3.utils.toBN(receipt.gasUsed).toString()
+		return web3.eth.getBlock(event.blockHash)
+	})
+	.then((block) => {
+		voting_logs[hash].voter[voter_address].vote_timestamp = block.timestamp
+		voting_logs[hash].voter[voter_address].vote_block = block.number
 	})
 	.catch((err) => {
 		console.log('log_new_vote error', err)
 	})
+
 }
 
+// web3.eth.getBlock(event.blockHash)
+// .then((block) => {
+// 	voter.timestamp = block.timestamp
+// 	voter.block_number = block.number
+// 	return web3.eth.getTransaction(event.transactionHash)
+// })
+// .then((tx) => {
+// 	voter.address = tx.from
+// 	return web3.eth.getTransactionReceipt(event.transactionHash)
+// })
+// .then((receipt) => {
+// 	voter.gas = web3.utils.toBN(receipt.gasUsed).toString()
+// 	return ddns_contract.methods.stakes(voter.address).call()
+// })
+// .then((stake) => {
+// 	voter.stake = stake
+// 	voting_logs[hash].voter.push(voter)
+// 	// export_voting_logs()
+// })
+// .catch((err) => {
+// 	console.log('log_new_vote error', err)
+// })
 
 function log_new_vote_for_ip(event) {
 	let hash = event.returnValues.hash
@@ -167,7 +284,13 @@ function log_new_vote_for_ip(event) {
 
 function log_vote_complete(event) {
 	let hash = event.returnValues.hash
-	web3.eth.getBlock(event.blockHash)
+	ddns_contract.methods.votingTable(hash).call()
+	.then((voting_args) => {
+		voting_logs[hash].commit_weight = voting_args.commitWeight
+		voting_logs[hash].positive_weight = voting_args.posVotingWeight
+		voting_logs[hash].negtive_weight = voting_args.negVotingWeight
+		return web3.eth.getBlock(event.blockHash)
+	})
 	.then((block) => {
 		voting_logs[hash].end_time = block.timestamp
 		voting_logs[hash].end_block_number = block.number
@@ -182,14 +305,6 @@ function export_voting_logs() {
 	fs.writeFileSync('../../experiment/testnet/voting_logs.json', data)
 	process.exit()
 }
-
-
-
-
-
-// setInterval(() => {
-// 	export_voting_logs()
-// }, 15000)
 
 
 
